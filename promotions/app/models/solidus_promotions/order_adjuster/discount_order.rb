@@ -6,6 +6,12 @@ module SolidusPromotions
       attr_reader :order, :promotions, :dry_run
 
       def initialize(order, promotions, dry_run: false)
+        if dry_run
+          Spree.deprecator.warn <<~MSG
+            Passing `dry_run` to `SolidusPromotions::OrderAdjuster::DiscountOrder` is deprecated.
+            Use `Spree::Config.promotions.eligibility_checker_class.new(order: order, promotion: promotion).call` instead.
+          MSG
+        end
         @order = order
         @promotions = promotions
         @dry_run = dry_run
@@ -14,15 +20,14 @@ module SolidusPromotions
       def call
         return order if order.shipped?
 
-        SolidusPromotions::Promotion.ordered_lanes.each_key do |lane|
-          lane_promotions = promotions.select { |promotion| promotion.lane == lane }
-          lane_benefits = eligible_benefits_for_promotable(lane_promotions.flat_map(&:benefits), order)
-          perform_order_benefits(lane_benefits, lane) unless dry_run
-          line_item_discounts = adjust_line_items(lane_benefits)
-          shipment_discounts = adjust_shipments(lane_benefits)
-          shipping_rate_discounts = adjust_shipping_rates(lane_benefits)
-          (line_item_discounts + shipment_discounts + shipping_rate_discounts).each do |item, chosen_discounts|
-            item.current_discounts.concat(chosen_discounts)
+        SolidusPromotions::Promotion.ordered_lanes.each do |lane|
+          SolidusPromotions::PromotionLane.set(current_lane: lane) do
+            lane_promotions = promotions.select { |promotion| promotion.lane == lane }
+            lane_benefits = eligible_benefits_for_promotable(lane_promotions.flat_map(&:benefits), order)
+            perform_order_benefits(lane_benefits, lane) unless dry_run
+            adjust_line_items(lane_benefits)
+            adjust_shipments(lane_benefits)
+            adjust_shipping_rates(lane_benefits)
           end
         end
 
@@ -32,45 +37,35 @@ module SolidusPromotions
       private
 
       def perform_order_benefits(lane_benefits, lane)
-        lane_benefits.select { |benefit| benefit.level == :order }.each do |benefit|
-          benefit.perform(order)
+        lane_benefits.filter_map do |benefit|
+          benefit.respond_to?(:perform) && benefit.perform(order)
         end
 
-        automated_line_items = order.line_items.select(&:managed_by_order_benefit)
-        return if automated_line_items.empty?
-
-        ineligible_line_items = automated_line_items.select do |line_item|
-          line_item.managed_by_order_benefit.promotion.lane == lane && !line_item.managed_by_order_benefit.in?(lane_benefits)
-        end
-
-        ineligible_line_items.each do |line_item|
-          line_item.managed_by_order_benefit.remove_from(order)
+        order.line_items.filter_map do |line_item|
+          line_item.managed_by_order_benefit &&
+            line_item.managed_by_order_benefit.promotion.lane == lane &&
+            !line_item.managed_by_order_benefit.in?(lane_benefits) &&
+            line_item.managed_by_order_benefit.remove_from(order)
         end
       end
 
       def adjust_line_items(benefits)
-        order.discountable_line_items.select do |line_item|
-          line_item.variant.product.promotionable?
-        end.map do |line_item|
-          discounts = generate_discounts(benefits, line_item)
-          chosen_item_discounts = SolidusPromotions.config.discount_chooser_class.new(discounts).call
-          [line_item, chosen_item_discounts]
+        order.discountable_line_items.filter_map do |line_item|
+          next unless line_item.variant.product.promotionable?
+          generate_discounts(benefits, line_item)
         end
       end
 
       def adjust_shipments(benefits)
         order.shipments.map do |shipment|
-          discounts = generate_discounts(benefits, shipment)
-          chosen_item_discounts = SolidusPromotions.config.discount_chooser_class.new(discounts).call
-          [shipment, chosen_item_discounts]
+          generate_discounts(benefits, shipment)
         end
       end
 
       def adjust_shipping_rates(benefits)
-        order.shipments.flat_map(&:shipping_rates).select(&:cost).map do |rate|
-          discounts = generate_discounts(benefits, rate)
-          chosen_item_discounts = SolidusPromotions.config.discount_chooser_class.new(discounts).call
-          [rate, chosen_item_discounts]
+        order.shipments.flat_map(&:shipping_rates).filter_map do |rate|
+          next unless rate.cost
+          generate_discounts(benefits, rate)
         end
       end
 
@@ -82,11 +77,11 @@ module SolidusPromotions
 
       def generate_discounts(possible_benefits, item)
         eligible_benefits = eligible_benefits_for_promotable(possible_benefits, item)
-        eligible_benefits.select do |benefit|
-          benefit.can_discount?(item)
-        end.map do |benefit|
-          benefit.discount(item)
-        end.compact
+        discounts = eligible_benefits.filter_map do |benefit|
+          benefit.can_discount?(item) && benefit.discount(item)
+        end
+        chosen_discounts = SolidusPromotions.config.discount_chooser_class.new(discounts).call
+        (item.current_lane_discounts - chosen_discounts).each(&:mark_for_destruction)
       end
     end
   end

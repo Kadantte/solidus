@@ -4,25 +4,25 @@ class SolidusAdmin::UI::Forms::Select::Component < SolidusAdmin::BaseComponent
   FONT_SIZES = {
     s: "[&>.control]:text-xs [&_.dropdown]:text-xs",
     m: "[&>.control]:text-sm [&_.dropdown]:text-sm",
-    l: "[&>.control]:text-base [&_.dropdown]:text-base",
+    l: "[&>.control]:text-base [&_.dropdown]:text-base"
   }.freeze
 
   HEIGHTS = {
     control: {
       s: "[&>.control]:min-h-7",
       m: "[&>.control]:min-h-9",
-      l: "[&>.control]:min-h-12",
+      l: "[&>.control]:min-h-12"
     },
     option: {
       s: "[&_.option]:h-7",
       m: "[&_.option]:h-9",
-      l: "[&_.option]:h-12",
+      l: "[&_.option]:h-12"
     },
     item: {
       s: "[&_.item]:h-5",
       m: "[&_.item]:h-5.5",
-      l: "[&_.item]:h-8",
-    },
+      l: "[&_.item]:h-8"
+    }
   }.freeze
 
   # Render custom select component, which uses "solidus_select" custom element
@@ -30,7 +30,10 @@ class SolidusAdmin::UI::Forms::Select::Component < SolidusAdmin::BaseComponent
   # @param choices [Array<String>, Array<Array<String>>] container with options to be rendered
   #   (see `ActionView::Helpers::FormOptionsHelper#options_for_select`).
   #   When +:src+ parameter is provided, use +:choices+ to provide the list of selected options only.
+  #   Include a dataset hash `{ data: { item_label: <alternative_label_text> } }` to change the text displayed in select
+  #   box when option is selected.
   # @param src [nil, String] URL of a JSON resource with options data to be loaded instead of rendering options in place.
+  # @option attributes [nil, String, Integer, Array<String, Integer>] :value which option should be selected
   # @option attributes [String] :"data-option-value-field"
   # @option attributes [String] :"data-option-label-field" when +:src+ param is passed, value and label of loaded options
   #   will be mapped to JSON response +"id"+ and +"name"+ by default. Use these parameters to map to different keys.

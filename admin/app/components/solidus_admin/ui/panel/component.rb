@@ -1,13 +1,8 @@
 # frozen_string_literal: true
 
 class SolidusAdmin::UI::Panel::Component < SolidusAdmin::BaseComponent
-  renders_one :action, ->(name:, href:, icon: 'add-box-fill', **args) {
-    link_to(
-      icon_tag(icon, class: 'w-[1.4em] h-[1.4em]') + name,
-      href,
-      **args,
-      class: 'flex gap-1 hover:underline'
-    )
+  renders_one :action, ->(name:, href:, icon: "add-line", size: :m, **args) {
+    render component("ui/button").add(text: name, path: href, icon:, size:, **args)
   }
 
   renders_many :sections, ->(**args, &block) do
@@ -33,8 +28,8 @@ class SolidusAdmin::UI::Panel::Component < SolidusAdmin::BaseComponent
     tag.section(**args, class: "
       border-gray-100 border-t w-full first-of-type:border-t-0
       flex flex-col gap-6
-      #{'px-6' unless wide}
-      #{'py-4' unless high}
+      #{"px-6" unless wide}
+      #{"py-4" unless high}
       #{args[:class]}
     ", &block)
   end

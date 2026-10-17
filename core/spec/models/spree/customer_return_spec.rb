@@ -1,78 +1,138 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Spree::CustomerReturn, type: :model do
   before do
     allow_any_instance_of(Spree::Order).to receive_messages(return!: true)
   end
 
-  describe ".validation" do
-    describe "#return_items_belong_to_same_order" do
-      let(:customer_return) { build(:customer_return) }
+  describe "#valid?" do
+    subject { customer_return.valid? }
 
-      let(:first_order) { create(:order_with_line_items) }
+    let(:customer_return) { build(:customer_return) }
+
+    let(:first_order) { create(:order_with_line_items) }
+    let(:second_order) { first_order }
+
+    let(:first_shipment) { first_order.shipments.first }
+    let(:second_shipment) { second_order.shipments.first }
+
+    let(:first_inventory_unit) { build(:inventory_unit, shipment: first_shipment, state: "shipped") }
+    let(:first_return_item) { build(:return_item, inventory_unit: first_inventory_unit) }
+
+    let(:second_inventory_unit) { build(:inventory_unit, shipment: second_shipment, state: "shipped") }
+    let(:second_return_item) { build(:return_item, inventory_unit: second_inventory_unit) }
+
+    before do
+      customer_return.return_items << first_return_item
+      customer_return.return_items << second_return_item
+    end
+
+    context "when the return items belong to the same order" do
       let(:second_order) { first_order }
 
-      let(:first_shipment) { first_order.shipments.first }
-      let(:second_shipment) { second_order.shipments.first }
+      it "is valid" do
+        expect(subject).to eq true
+      end
+    end
 
-      let(:first_inventory_unit)  { build(:inventory_unit, shipment: first_shipment) }
-      let(:first_return_item)     { build(:return_item, inventory_unit: first_inventory_unit) }
+    context "when the return items belong to different orders" do
+      let(:second_order) { create(:order_with_line_items) }
 
-      let(:second_inventory_unit) { build(:inventory_unit, shipment: second_shipment) }
-      let(:second_return_item)    { build(:return_item, inventory_unit: second_inventory_unit) }
+      it "is not valid" do
+        expect(subject).to eq false
+      end
 
-      subject { customer_return.valid? }
+      it "adds an error message" do
+        subject
+        expect(customer_return.errors.full_messages).to include(I18n.t("spree.return_items_cannot_be_associated_with_multiple_orders"))
+      end
+    end
 
+    context "when a return item's inventory unit has not shipped" do
+      let(:first_inventory_unit) { build(:inventory_unit, shipment: first_shipment, state: "on_hand") }
+
+      it "is not valid" do
+        expect(subject).to eq false
+      end
+
+      it "adds an error message" do
+        subject
+
+        expect(customer_return.errors.full_messages)
+          .to include(I18n.t("spree.return_items_must_have_shipped_inventory_units"))
+      end
+    end
+
+    context "when a return item is being received against an unshipped unit" do
+      let(:first_inventory_unit) { build(:inventory_unit, shipment: first_shipment, state: "on_hand") }
+      let(:first_return_item) do
+        build(:return_item, inventory_unit: first_inventory_unit, reception_status_event: "receive")
+      end
+
+      it "is not valid" do
+        expect(subject).to eq false
+      end
+    end
+
+    context "when a return item has already been received" do
+      let(:customer_return) { create(:customer_return, return_items_count: 1) }
+
+      before { customer_return.return_items.first.receive! }
+
+      it "is still valid once its inventory unit has been returned" do
+        expect(customer_return.reload).to be_valid
+      end
+    end
+
+    context "when inventory is not present" do
       before do
-        customer_return.return_items << first_return_item
-        customer_return.return_items << second_return_item
+        customer_return.return_items.clear
+
+        customer_return.return_items << Spree::ReturnItem.new
       end
 
-      context "return items are part of different orders" do
-        let(:second_order) { create(:order_with_line_items) }
-
-        it "is not valid" do
-          expect(subject).to eq false
-        end
-
-        it "adds an error message" do
-          subject
-          expect(customer_return.errors.full_messages).to include(I18n.t('spree.return_items_cannot_be_associated_with_multiple_orders'))
-        end
+      it "is invalid" do
+        expect(subject).to eq false
       end
+    end
+  end
 
-      context "return items are part of the same order" do
-        let(:second_order) { first_order }
+  describe "#save" do
+    subject { customer_return.save }
 
-        it "is valid" do
-          expect(subject).to eq true
-        end
+    let(:order) { create(:shipped_order, line_items_count: 1) }
+    let(:inventory_unit) { order.inventory_units.first }
+    let(:customer_return) do
+      build(:customer_return_without_return_items).tap do |record|
+        record.return_items = [
+          build(:return_item, inventory_unit:, reception_status_event: "receive")
+        ]
       end
+    end
 
-      context "inventory is not present" do
-        before do
-          customer_return.return_items.clear
+    context "when the inventory unit has not shipped" do
+      before { inventory_unit.update_column(:state, "on_hand") }
 
-          customer_return.return_items << Spree::ReturnItem.new
-        end
-
-        it "is invalid" do
-          expect(subject).to eq false
-        end
+      it "is rejected rather than raising an invalid transition" do
+        expect(subject).to eq false
       end
+    end
+
+    context "when the inventory unit has shipped" do
+      it { is_expected.to eq true }
     end
   end
 
   describe ".before_create" do
     describe "#generate_number" do
       context "number is assigned" do
-        let(:customer_return) { Spree::CustomerReturn.new(number: '123') }
+        let(:customer_return) { Spree::CustomerReturn.new(number: "123") }
 
         it "should return the assigned number" do
           customer_return.save
-          expect(customer_return.number).to eq('123')
+          expect(customer_return.number).to eq("123")
         end
       end
 
@@ -120,7 +180,7 @@ RSpec.describe Spree::CustomerReturn, type: :model do
     let(:order) { stub_model(Spree::Order, currency: "GBP") }
     let(:customer_return) { stub_model(Spree::CustomerReturn, order:) }
 
-    it 'returns the order currency' do
+    it "returns the order currency" do
       expect(Spree::Config.currency).to eq("USD")
       expect(customer_return.currency).to eq("GBP")
     end
@@ -182,14 +242,14 @@ RSpec.describe Spree::CustomerReturn, type: :model do
   end
 
   context ".after_save" do
-    let(:inventory_unit)  { create(:inventory_unit, state: 'shipped', order: create(:shipped_order)) }
-    let(:return_item)     { build(:return_item, inventory_unit:) }
+    let(:inventory_unit) { create(:inventory_unit, state: "shipped", order: create(:shipped_order)) }
+    let(:return_item) { build(:return_item, inventory_unit:) }
 
     context "to the initial stock location" do
       it "should mark the received inventory units are returned" do
         create(:customer_return_without_return_items, return_items: [return_item], stock_location_id: inventory_unit.shipment.stock_location_id)
         return_item.receive!
-        expect(inventory_unit.reload.state).to eq 'returned'
+        expect(inventory_unit.reload.state).to eq "returned"
       end
 
       it "should update the stock item counts in the stock location" do
@@ -199,7 +259,7 @@ RSpec.describe Spree::CustomerReturn, type: :model do
         end.to change { inventory_unit.find_stock_item.count_on_hand }.by(1)
       end
 
-      context 'with Config.track_inventory_levels == false' do
+      context "with Config.track_inventory_levels == false" do
         before do
           stub_spree_preferences(track_inventory_levels: false)
           expect(Spree::StockItem).not_to receive(:find_by)
@@ -248,9 +308,9 @@ RSpec.describe Spree::CustomerReturn, type: :model do
         return_item.update!(reception_status: "lost_in_transit")
       end
 
-      it 'should not updated inventory unit to returned' do
+      it "should not updated inventory unit to returned" do
         create(:customer_return_without_return_items, return_items: [return_item], stock_location_id: inventory_unit.shipment.stock_location_id)
-        expect(inventory_unit.reload.state).to eq 'shipped'
+        expect(inventory_unit.reload.state).to eq "shipped"
       end
 
       it "should not update the stock item counts in the stock location" do
@@ -261,40 +321,40 @@ RSpec.describe Spree::CustomerReturn, type: :model do
     end
   end
 
-  describe '#fully_reimbursed?' do
+  describe "#fully_reimbursed?" do
     let(:customer_return) { create(:customer_return) }
 
     let!(:default_refund_reason) { Spree::RefundReason.find_or_create_by!(name: Spree::RefundReason::RETURN_PROCESSING_REASON, mutable: false) }
 
     subject { customer_return.fully_reimbursed? }
 
-    context 'when some return items are undecided' do
+    context "when some return items are undecided" do
       it { is_expected.to be false }
     end
 
-    context 'when all return items are decided' do
-      context 'when all return items are rejected' do
+    context "when all return items are decided" do
+      context "when all return items are rejected" do
         before { customer_return.return_items.each(&:reject!) }
 
         it { is_expected.to be true }
       end
 
-      context 'when all return items are accepted' do
+      context "when all return items are accepted" do
         before { customer_return.return_items.each(&:accept!) }
 
-        context 'when some return items have no reimbursement' do
+        context "when some return items have no reimbursement" do
           it { is_expected.to be false }
         end
 
-        context 'when all return items have a reimbursement' do
+        context "when all return items have a reimbursement" do
           let!(:reimbursement) { create(:reimbursement, customer_return:) }
 
-          context 'when some reimbursements are not reimbursed' do
+          context "when some reimbursements are not reimbursed" do
             it { is_expected.to be false }
           end
 
-          context 'when all reimbursements are reimbursed' do
-            let(:created_by_user) { create(:user, email: 'user@email.com') }
+          context "when all reimbursements are reimbursed" do
+            let(:created_by_user) { create(:user, email: "user@email.com") }
             before { reimbursement.perform!(created_by: created_by_user) }
 
             it { is_expected.to be true }

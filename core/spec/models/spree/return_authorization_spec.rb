@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Spree::ReturnAuthorization, type: :model do
   let(:order) { create(:shipped_order) }
@@ -25,25 +25,25 @@ RSpec.describe Spree::ReturnAuthorization, type: :model do
     end
 
     context "an inventory unit is already being exchanged" do
-      let(:order)                           { create(:shipped_order, line_items_count: 2) }
-      let!(:previous_exchange_return_item)  { create(:exchange_return_item, inventory_unit: order.inventory_units.last) }
-      let(:return_item)                     { create(:return_item, inventory_unit: order.inventory_units.last) }
-      let(:return_authorization)            { build(:return_authorization, order:, return_items: [return_item]) }
+      let(:order) { create(:shipped_order, line_items_count: 2) }
+      let!(:previous_exchange_return_item) { create(:exchange_return_item, inventory_unit: order.inventory_units.last) }
+      let(:return_item) { create(:return_item, inventory_unit: order.inventory_units.last) }
+      let(:return_authorization) { build(:return_authorization, order:, return_items: [return_item]) }
 
       it "should be invalid" do
         return_authorization.save
-        expect(return_authorization.errors['base']).to include('Return items cannot be created for inventory units that are already awaiting exchange.')
+        expect(return_authorization.errors["base"]).to include("Return items cannot be created for inventory units that are already awaiting exchange.")
       end
     end
 
     context "an inventory unit is not being exchanged" do
-      let(:order)                           { create(:shipped_order, line_items_count: 2) }
-      let(:return_item)                     { create(:return_item, inventory_unit: order.inventory_units.last) }
-      let(:return_authorization)            { build(:return_authorization, order:, return_items: [return_item]) }
+      let(:order) { create(:shipped_order, line_items_count: 2) }
+      let(:return_item) { create(:return_item, inventory_unit: order.inventory_units.last) }
+      let(:return_authorization) { build(:return_authorization, order:, return_items: [return_item]) }
 
       it "is valid" do
         return_authorization.save
-        expect(return_authorization.errors['base'].size).to eq 0
+        expect(return_authorization.errors["base"].size).to eq 0
       end
     end
   end
@@ -51,11 +51,11 @@ RSpec.describe Spree::ReturnAuthorization, type: :model do
   describe ".before_create" do
     describe "#generate_number" do
       context "number is assigned" do
-        let(:return_authorization) { Spree::ReturnAuthorization.new(number: '123') }
+        let(:return_authorization) { Spree::ReturnAuthorization.new(number: "123") }
 
         it "should return the assigned number" do
           return_authorization.save
-          expect(return_authorization.number).to eq('123')
+          expect(return_authorization.number).to eq("123")
         end
       end
 
@@ -104,9 +104,9 @@ RSpec.describe Spree::ReturnAuthorization, type: :model do
   end
 
   describe "#amount" do
-    let(:return_item1) { create(:return_item, amount: 10) }
-    let(:return_item2) { create(:return_item, amount: 5) }
-    let(:return_authorization) { create(:return_authorization, return_items: [return_item1, return_item2]) }
+    let(:return_authorization) { create(:return_authorization) }
+    let!(:return_item1) { create(:return_item, return_authorization:, amount: 10) }
+    let!(:return_item2) { create(:return_item, return_authorization:, amount: 5) }
 
     subject { return_authorization.amount }
 
@@ -166,58 +166,59 @@ RSpec.describe Spree::ReturnAuthorization, type: :model do
     end
   end
 
-  describe 'cancel_return_items' do
-    let(:return_authorization) { create(:return_authorization, return_items:) }
-    let(:return_items) { [return_item] }
-    let(:return_item) { create(:return_item) }
+  describe "cancel_return_items" do
+    let(:return_authorization) { create(:return_authorization) }
+    let!(:return_item) { create(:return_item, return_authorization:) }
 
     subject {
       return_authorization.cancel!
     }
 
-    it 'cancels the associated return items' do
+    it "cancels the associated return items" do
       subject
-      expect(return_item.reception_status).to eq 'cancelled'
+      expect(return_item.reload.reception_status).to eq "cancelled"
     end
 
-    context 'some return items cannot be cancelled' do
-      let(:return_items) { [return_item, return_item_2] }
-      let(:return_item_2) { create(:return_item, reception_status: 'received') }
+    context "some return items cannot be cancelled" do
+      let!(:return_item_2) { create(:return_item, return_authorization:, reception_status: "received") }
 
-      it 'cancels those that can be cancelled' do
+      it "cancels those that can be cancelled" do
         subject
-        expect(return_item.reception_status).to eq 'cancelled'
-        expect(return_item_2.reception_status).to eq 'received'
+        expect(return_item.reload.reception_status).to eq "cancelled"
+        expect(return_item_2.reload.reception_status).to eq "received"
       end
     end
   end
 
-  describe '#can_cancel?' do
-    subject { create(:return_authorization, return_items:).can_cancel? }
+  describe "#can_cancel?" do
+    subject { return_authorization.can_cancel? }
+    let(:return_authorization) { create(:return_authorization) }
     let(:return_items) { [return_item_1, return_item_2] }
-    let(:return_item_1) { create(:return_item) }
-    let(:return_item_2) { create(:return_item) }
+    let(:return_item_1) { create(:return_item, return_authorization:) }
+    let(:return_item_2) { create(:return_item, return_authorization:) }
 
-    context 'all items can be cancelled' do
-      it 'returns true' do
+    before { return_items }
+
+    context "all items can be cancelled" do
+      it "returns true" do
         expect(subject).to eq true
       end
     end
 
-    context 'at least one return item can be cancelled' do
-      let(:return_item_2) { create(:return_item, reception_status: 'received') }
+    context "at least one return item can be cancelled" do
+      let(:return_item_2) { create(:return_item, return_authorization:, reception_status: "received") }
 
       it { is_expected.to eq true }
     end
 
-    context 'no items can be cancelled' do
-      let(:return_item_1) { create(:return_item, reception_status: 'received') }
-      let(:return_item_2) { create(:return_item, reception_status: 'received') }
+    context "no items can be cancelled" do
+      let(:return_item_1) { create(:return_item, return_authorization:, reception_status: "received") }
+      let(:return_item_2) { create(:return_item, return_authorization:, reception_status: "received") }
 
       it { is_expected.to eq false }
     end
 
-    context 'when return_authorization has no return_items' do
+    context "when return_authorization has no return_items" do
       let(:return_items) { [] }
 
       it { is_expected.to eq true }

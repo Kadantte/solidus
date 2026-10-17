@@ -6,7 +6,7 @@ module SolidusAdmin
 
     include SolidusAdmin::ControllerHelpers::Search
 
-    helper_method :search_filter_params
+    helper_method :search_filter_params, :resource_form_frame
 
     before_action :set_paginated_resources, only: %i[index]
     before_action :set_resource, only: %i[edit update]
@@ -16,28 +16,35 @@ module SolidusAdmin
     # Uses {set_paginated_resources} to set @resources
     # and a instance variable with the plural name of the resource.
     #
-    # Uses the geared_pagination gem to set @page for pagination.
+    # Uses {paginate} to set @page for pagination.
     #
     # @see set_paginated_resources
     # @see resources_collection
     def index
       respond_to do |format|
         format.html { render index_component.new(page: @page) }
-        format.json { render json: blueprint.render(@page.records, view: blueprint_view) }
+        format.json do
+          set_pagination_headers(@page)
+          render json: blueprint.render(@page.records, view: blueprint_view)
+        end
       end
     end
 
     def new
-      @resource = resource_class.new
+      @resource ||= resource_class.new
       render new_component.new(@resource)
     end
 
     def create
-      @resource = resource_class.new(permitted_resource_params)
+      @resource ||= resource_class.new(permitted_resource_params)
 
       if @resource.save
-        flash[:notice] = t('.success')
-        redirect_to after_create_path, status: :see_other
+        flash[:notice] = t(".success")
+
+        respond_to do |format|
+          format.html { redirect_to after_create_path, status: :see_other }
+          format.turbo_stream if prefer_turbo_stream?
+        end
       else
         page_component = new_component.new(@resource)
         render_resource_form_with_errors(page_component)
@@ -45,13 +52,19 @@ module SolidusAdmin
     end
 
     def edit
-      render edit_component.new(@resource)
+      respond_to do |format|
+        format.html { render edit_component.new(@resource) }
+      end
     end
 
     def update
       if @resource.update(permitted_resource_params)
-        flash[:notice] = t('.success')
-        redirect_to after_update_path, status: :see_other
+        flash[:notice] = t(".success")
+
+        respond_to do |format|
+          format.html { redirect_to after_update_path, status: :see_other }
+          format.turbo_stream if prefer_turbo_stream?
+        end
       else
         page_component = edit_component.new(@resource)
         render_resource_form_with_errors(page_component)
@@ -63,8 +76,12 @@ module SolidusAdmin
 
       resource_class.transaction { @resource.destroy_all }
 
-      flash[:notice] = t('.success')
-      redirect_back_or_to after_destroy_path, status: :see_other
+      flash[:notice] = t(".success")
+
+      respond_to do |format|
+        format.html { redirect_back_or_to after_destroy_path, status: :see_other }
+        format.turbo_stream if prefer_turbo_stream?
+      end
     end
 
     private
@@ -76,16 +93,15 @@ module SolidusAdmin
     def set_paginated_resources
       @resources ||= apply_search_to(
         resources_collection,
-          param: :q,
-        ).tap do |resources|
-          instance_variable_set("@#{plural_resource_name}", resources)
-          # sets @page instance variable in geared_pagination gem
-          set_page_and_extract_portion_from(resources, ordered_by: resources_sorting_options, per_page:)
-        end
+        param: :q
+      ).tap do |resources|
+        instance_variable_set("@#{plural_resource_name}", resources)
+        @page = paginate(resources, ordered_by: resources_sorting_options, per_page:)
+      end
     end
 
     def resources_sorting_options
-      { id: :desc }
+      {id: :desc}
     end
 
     def per_page
@@ -98,7 +114,7 @@ module SolidusAdmin
 
     def set_resource
       @resource ||= resource_class.find(params[:id]).tap do |resource|
-          instance_variable_set("@#{resource_name}", resource)
+        instance_variable_set("@#{resource_name}", resource)
       end
     end
 
@@ -169,5 +185,7 @@ module SolidusAdmin
     def resource_form_frame
       :resource_form
     end
+
+    def prefer_turbo_stream? = false
   end
 end

@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: test-${{ github.ref_name }}
@@ -13,26 +14,24 @@ jobs:
   solidus_admin:
     uses: ./.github/workflows/test_solidus.yml
     with:
+      artifacts: true
       lib_name: admin
       coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit
 
   solidus_api:
     uses: ./.github/workflows/test_solidus.yml
     with:
       lib_name: api
       coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit
 
   solidus_backend:
     uses: ./.github/workflows/test_solidus.yml
     with:
       lib_name: backend
       coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit
 
   solidus_backend_js:
     name: solidus_backend JS
@@ -40,7 +39,7 @@ jobs:
     env:
       LIB_NAME: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -56,27 +55,31 @@ jobs:
     with:
       lib_name: core
       coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit
+
+  solidus_i18n:
+    uses: ./.github/workflows/test_solidus.yml
+    with:
+      lib_name: i18n
+    secrets: inherit
 
   solidus_sample:
     uses: ./.github/workflows/test_solidus.yml
     with:
       lib_name: sample
       coverage: false
+    secrets: inherit
 
   solidus_legacy_promotions:
     uses: ./.github/workflows/test_solidus.yml
     with:
       lib_name: legacy_promotions
       coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit
 
   solidus_promotions:
     uses: ./.github/workflows/test_solidus.yml
     with:
       lib_name: promotions
       coverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    secrets: inherit

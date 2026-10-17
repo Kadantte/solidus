@@ -43,15 +43,15 @@ module Spree
 
     attr_accessor :target_shipment, :price_currency
 
-    self.allowed_ransackable_associations = ['variant']
-    self.allowed_ransackable_attributes = ['variant_id']
+    self.allowed_ransackable_associations = ["variant"]
+    self.allowed_ransackable_attributes = ["variant_id"]
 
     # @return [BigDecimal] the amount of this line item, which is the line
     #   item's price multiplied by its quantity.
     def amount
       price * quantity
     end
-    alias subtotal amount
+    alias_method :subtotal, :amount
 
     # @return [BigDecimal] the amount of this line item, taking into
     #   consideration all its adjustments.
@@ -62,7 +62,7 @@ module Spree
     # @return [BigDecimal] the amount of this item, taking into consideration
     #   all non-tax adjustments.
     def total_before_tax
-      amount + adjustments.reject(&:tax?).sum(&:amount)
+      amount + adjustments.reject { |adjustment| adjustment.tax? || adjustment.marked_for_destruction? }.sum(&:amount)
     end
 
     # @return [BigDecimal] the amount of this line item before VAT tax
@@ -72,17 +72,18 @@ module Spree
     end
 
     extend Spree::DisplayMoney
+
     money_methods :amount, :price,
-                  :included_tax_total, :additional_tax_total,
-                  :total, :total_before_tax, :total_excluding_vat
+      :included_tax_total, :additional_tax_total,
+      :total, :total_before_tax, :total_excluding_vat
 
     # @return [Spree::Money] the price of this line item
-    alias money_price display_price
-    alias single_display_amount display_price
-    alias single_money display_price
+    alias_method :money_price, :display_price
+    alias_method :single_display_amount, :display_price
+    alias_method :single_money, :display_price
 
     # @return [Spree::Money] the amount of this line item
-    alias money display_amount
+    alias_method :money, :display_amount
 
     # Sets price from a `Spree::Money` object
     #
@@ -99,7 +100,7 @@ module Spree
     # @return [Boolean] true when it is possible to supply the required
     #   quantity of stock of this line item's variant
     def sufficient_stock?
-      Stock::Quantifier.new(variant).can_supply? quantity
+      Spree::Config.stock.quantifier_class.new(variant).can_supply? quantity
     end
 
     # @return [Boolean] true when it is not possible to supply the required
@@ -122,9 +123,18 @@ module Spree
       # it from the variant. Please note that this always allows to set
       # a price for this line item, even if there is no existing price
       # for the associated line item in the order currency.
-      unless options.key?(:price) || options.key?('price')
+      unless options.key?(:price) || options.key?("price")
         self.money_price = variant.price_for_options(pricing_options)&.money
       end
+    end
+
+    # Recalculate the price using the pricing options for this line item.
+    # Useful for making sure carts are up-to-date when prices change.
+    # Will not make changes to completed orders.
+    #
+    def recalculate_price
+      return if order.completed?
+      self.money_price = variant.price_for_options(pricing_options)&.money
     end
 
     def pricing_options

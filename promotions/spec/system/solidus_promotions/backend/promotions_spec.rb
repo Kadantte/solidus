@@ -51,39 +51,39 @@ RSpec.feature "Promotions admin" do
       end
 
       it "filters by name" do
-        visit solidus_promotions.admin_promotions_path(q: { name_cont: promotion1.name })
+        visit solidus_promotions.admin_promotions_path(q: {name_cont: promotion1.name})
         expect(page).to have_content(promotion1.name)
         expect(page).not_to have_content(promotion2.name)
       end
 
       it "filters by code" do
-        visit solidus_promotions.admin_promotions_path(q: { codes_value_cont: promotion1.codes.first.value })
+        visit solidus_promotions.admin_promotions_path(q: {codes_value_cont: promotion1.codes.first.value})
         expect(page).to have_content(promotion1.name)
         expect(page).not_to have_content(promotion2.name)
       end
 
       it "filters by path" do
-        visit solidus_promotions.admin_promotions_path(q: { path_cont: promotion1.path })
+        visit solidus_promotions.admin_promotions_path(q: {path_cont: promotion1.path})
         expect(page).to have_content(promotion1.name)
         expect(page).not_to have_content(promotion2.name)
       end
 
       it "filters by active date" do
-        visit solidus_promotions.admin_promotions_path(q: { active: Time.current })
+        visit solidus_promotions.admin_promotions_path(q: {active: Time.current})
         expect(page).to have_content(promotion1.name)
         expect(page).to have_content(promotion2.name)
         expect(page).not_to have_content(promotion3.name)
       end
 
       it "filters by active the day before yesterday" do
-        visit solidus_promotions.admin_promotions_path(q: { active: 2.days.ago })
+        visit solidus_promotions.admin_promotions_path(q: {active: 2.days.ago})
         expect(page).to have_content(promotion1.name)
         expect(page).to have_content(promotion2.name)
         expect(page).to have_content(promotion3.name)
       end
 
       it "filters by lane" do
-        visit solidus_promotions.admin_promotions_path(q: { lane_eq: :pre })
+        visit solidus_promotions.admin_promotions_path(q: {lane_eq: :pre})
         expect(page).to have_content(promotion1.name)
         expect(page).not_to have_content(promotion2.name)
         expect(page).not_to have_content(promotion3.name)
@@ -159,6 +159,41 @@ RSpec.feature "Promotions admin" do
         find(".delete").click
       end
       expect(page).to have_content("Benefit has been successfully removed!")
+    end
+  end
+
+  describe "Adding a benefit condition" do
+    let!(:promotion_with_benefit) { create(:solidus_promotion, :with_adjustable_benefit) }
+    let!(:product) { create(:product) }
+    let!(:option_value) { create(:option_value) }
+    let!(:variant) { create(:variant, product: product, option_values: [option_value]) }
+
+    it "allows adding an option value condition", :js do
+      visit solidus_promotions.edit_admin_promotion_path(promotion_with_benefit)
+      click_link "Add Condition"
+      select("Line Item variant matches option values", from: "Condition Type")
+      click_button "Add"
+      expect(page).to have_content("Line Item variant matches option values")
+      click_link "Add product"
+      within(".promo-condition-option-value") do
+        targetted_select2_search(product.name, from: "#s2id_ov-product-picker-0")
+        targetted_select2_search(option_value.name, from: "#s2id_option-value-picker-0")
+      end
+      within("#benefits_adjust_line_item_#{promotion_with_benefit.benefits.first.id}_conditions") do
+        click_button("Update")
+      end
+      expect(page).to have_content("Condition has been successfully updated!")
+    end
+  end
+
+  describe "Rendering the promotion edit page with the PercentWithCap calculator" do
+    let(:promotion) { create(:solidus_promotion, name: "My capped promotion", benefits: [benefit]) }
+    let(:benefit) { SolidusPromotions::Benefits::AdjustLineItem.new(calculator:) }
+    let(:calculator) { SolidusPromotions::Calculators::PercentWithCap.new(preferred_percent: 10, preferred_max_amount: 100) }
+
+    it "renders without errors" do
+      visit solidus_promotions.edit_admin_promotion_path(promotion)
+      expect(page).to have_content("My capped promotion")
     end
   end
 end

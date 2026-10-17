@@ -6,28 +6,30 @@ SolidusAdmin::Engine.routes.draw do
 
   resource :account, only: :show
   resources :countries, only: [] do
-    get 'states', to: 'countries#states'
+    get "states", to: "countries#states"
   end
 
-  resources :states, only: [:index], defaults: { format: :json }
+  resources :states, only: [:index], defaults: {format: :json}
 
   admin_resources :products, only: [:index, :update, :destroy] do
     collection do
       put :discontinue
       put :activate
     end
+
+    resources :taxons, only: [:new, :create], controller: :product_taxons
   end
 
   # Needs a constraint to avoid interpreting "new" as a product's slug
   admin_resources :products, only: [
     :show, :edit
-  ], constraints: ->{ SolidusAdmin::Config.enable_alpha_features? && _1.path != "/admin/products/new" }
+  ], constraints: -> { SolidusAdmin::Config.enable_alpha_features? && _1.path != "/admin/products/new" }
 
   admin_resources :orders, only: [:index]
 
   admin_resources :orders, except: [
     :destroy, :index
-  ], constraints: ->{ SolidusAdmin::Config.enable_alpha_features? } do
+  ], constraints: -> { SolidusAdmin::Config.enable_alpha_features? } do
     resources :adjustments, only: [:index] do
       collection do
         delete :destroy
@@ -46,6 +48,11 @@ SolidusAdmin::Engine.routes.draw do
       get :customers_for
     end
   end
+
+  admin_resources :payment_methods,
+    constraints: -> { SolidusAdmin::Config.enable_alpha_features? },
+    except: [:show],
+    sortable: true
 
   admin_resources :users, only: [:index, :edit, :destroy] do
     member do
@@ -69,17 +76,19 @@ SolidusAdmin::Engine.routes.draw do
 
   admin_resources :promotions, only: [:index, :destroy]
   admin_resources :properties, except: [:show]
-  admin_resources :option_types, only: [:index, :destroy], sortable: true
+  admin_resources :option_types, except: [:show], sortable: true do
+    admin_resources :option_values, only: [:new, :create, :destroy], controller: "option_values", sortable: false
+  end
+  admin_resources :option_values, only: [:edit, :update], sortable: true
   admin_resources :taxonomies, only: [:index, :destroy], sortable: true
   admin_resources :promotion_categories, only: [:index, :destroy]
   admin_resources :tax_categories, except: [:show]
-  admin_resources :tax_rates, only: [:index, :destroy]
-  admin_resources :payment_methods, only: [:index, :destroy], sortable: true
+  admin_resources :tax_rates, except: [:show]
   admin_resources :stock_items, only: [:index, :edit, :update]
   admin_resources :shipping_methods, only: [:index, :destroy]
   admin_resources :shipping_categories, except: [:show]
   admin_resources :stock_locations, except: [:show]
-  admin_resources :stores, only: [:index, :destroy]
+  admin_resources :stores, except: [:show]
   admin_resources :zones, except: [:show]
   admin_resources :refund_reasons, except: [:show]
   admin_resources :reimbursement_types, only: [:index]
@@ -87,4 +96,5 @@ SolidusAdmin::Engine.routes.draw do
   admin_resources :roles, except: [:show]
   admin_resources :adjustment_reasons, except: [:show]
   admin_resources :store_credit_reasons, except: [:show]
+  admin_resources :product_option_types, only: [], sortable: true
 end

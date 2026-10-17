@@ -3,6 +3,10 @@
 module SolidusPromotions
   module Benefits
     module OrderBenefit
+      def self.included(_base)
+        Spree.deprecator.warn("Including #{name} is deprecated.")
+      end
+
       def can_discount?(_)
         false
       end
@@ -10,6 +14,7 @@ module SolidusPromotions
       def level
         :order
       end
+      deprecate :level, deprecator: Spree.deprecator
     end
   end
 end

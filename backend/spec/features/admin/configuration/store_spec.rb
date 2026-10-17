@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
 
 describe "Store", type: :feature, js: true do
   stub_authorization!
 
   let!(:store) do
-    create(:store, name: 'Test Store', url: 'test.example.org',
-           mail_from_address: 'test@example.org')
+    create(:store, name: "Test Store", url: "test.example.org",
+      mail_from_address: "test@example.org")
   end
 
   let!(:vat_country) { create(:country, iso: "DE", name: "Germany") }
+  let!(:store_country) { create(:country, iso: "AT", states_required: false) }
 
   before(:each) do
     visit spree.admin_path
@@ -37,13 +38,35 @@ describe "Store", type: :feature, js: true do
     end
 
     it "should be able to update the default cart tax country" do
-      expect(page).to have_select('Tax Country for Empty Carts', selected: 'No taxes on carts without address')
+      expect(page).to have_select("Tax Country for Empty Carts", selected: "No taxes on carts without address")
 
       select "Germany", from: "Tax Country for Empty Carts"
       click_button "Update"
 
       expect(page).to have_content("has been successfully updated")
       expect(page).to have_select("Tax Country for Empty Carts", selected: "Germany")
+    end
+  end
+
+  context "editing the store address" do
+    it "should be able to save the address" do
+      within("[data-hook='store_address_wrapper']") do
+        expect(page).not_to have_field("Email")
+        fill_in "Name", with: "Test Store Inc."
+        fill_in "Street Address", with: "1 Store Street"
+        fill_in "City", with: "Storetown"
+        fill_in "Zip Code", with: "12345"
+        fill_in "Phone", with: "555-555-0199"
+        select "Austria", from: "Country"
+      end
+      click_button "Update"
+
+      expect(page).to have_content("has been successfully updated")
+      expect(store.reload.address).to have_attributes(
+        name: "Test Store Inc.",
+        address1: "1 Store Street",
+        country: store_country
+      )
     end
   end
 

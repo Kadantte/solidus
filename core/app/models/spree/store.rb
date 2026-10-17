@@ -17,7 +17,9 @@ module Spree
 
     has_many :orders, class_name: "Spree::Order"
 
-    validates :code, presence: true, uniqueness: { allow_blank: true, case_sensitive: true }
+    belongs_to :address, class_name: "Spree::Address", optional: true, validate: true
+
+    validates :code, presence: true, uniqueness: {allow_blank: true, case_sensitive: true}
     validates :name, presence: true
     validates :url, presence: true
     validates :mail_from_address, presence: true
@@ -25,7 +27,7 @@ module Spree
     self.allowed_ransackable_attributes = %w[name url code]
 
     before_save :ensure_default_exists_and_is_unique
-    before_destroy :validate_not_default
+    before_destroy :validate_not_default, prepend: true
 
     enum :reverse_charge_status, {
       disabled: 0,
@@ -34,9 +36,9 @@ module Spree
     }, prefix: true
 
     def available_locales
-      locales = super()
+      locales = super
       if locales
-        super().split(",").map(&:to_sym)
+        super.split(",").map(&:to_sym)
       else
         Spree.i18n_available_locales
       end
@@ -47,8 +49,12 @@ module Spree
       if locales.empty?
         super(nil)
       else
-        super(locales.map(&:to_s).join(","))
+        super(locales.join(","))
       end
+    end
+
+    def address_attributes=(attributes)
+      self.address = Spree::Address.immutable_merge(address, attributes)
     end
 
     def self.default
@@ -73,6 +79,7 @@ module Spree
     def validate_not_default
       if default
         errors.add(:base, :cannot_destroy_default_store)
+        throw :abort
       end
     end
   end

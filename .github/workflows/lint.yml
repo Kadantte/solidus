@@ -15,48 +15,50 @@ env:
 jobs:
   ruby:
     name: Check Ruby
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Install Ruby and gems
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2"
+          ruby-version: "3.4"
           bundler-cache: true
       - name: Lint Ruby files
         run: bin/rake lint:rb
       - name: Store test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: rubocop-results
+          name: standardrb-results
           path: test-results
 
   erb:
     name: Check ERB
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Install Ruby and gems
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2"
+          ruby-version: "3.4"
           bundler-cache: true
       - name: Lint ERB files
         run: bin/rake lint:erb
 
   javascript:
     name: Check JavaScript
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       ESLINT_USE_FLAT_CONFIG: false
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install Ruby and gems
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: "3.2"
+          ruby-version: "3.4"
           bundler-cache: true
+      - name: Install ESLint globally
+        run: npm install --save-dev eslint@latest @eslint/js@latest @eslint/eslintrc@latest
       - name: Lint JS files
         run: bin/rake lint:js

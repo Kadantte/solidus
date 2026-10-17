@@ -3,12 +3,58 @@
 require "rails_helper"
 
 RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
-  subject(:discounter) { described_class.new(order) }
+  subject(:order_adjuster) { described_class.new(order, dry_run_promotion: dry_run_promotion) }
 
+  let!(:order) { line_item.order }
+  let(:dry_run_promotion) { nil }
   let(:line_item) { create(:line_item) }
-  let(:order) { line_item.order }
   let(:promotion) { create(:solidus_promotion, apply_automatically: true) }
   let(:calculator) { SolidusPromotions::Calculators::Percent.new(preferred_percent: 10) }
+
+  context "adding discounted line items" do
+    let(:variant) { create(:variant, price: 100) }
+    let!(:benefit) do
+      SolidusPromotions::Benefits::CreateDiscountedItem.create(
+        promotion: promotion,
+        calculator: calculator,
+        preferences: {variant_id: variant.id}
+      )
+    end
+    let(:adjustable) { order }
+
+    context "when not doing a dry-run of a promotion" do
+      subject do
+        order_adjuster.call
+      end
+
+      it "builds a line item of the given variant with a discount adjustment corresponding to the calculator", :aggregate_failures do
+        expect {
+          subject
+        }.to change { order.line_items.length }.by(1)
+
+        expect(order.line_items.last).not_to be_persisted
+        expect(order.line_items.last.variant).to eq(variant)
+        expect(order.line_items.last.adjustments.first.amount).to eq(-10)
+        expect(order.line_items.last.adjustments.first.source).to eq(benefit)
+      end
+    end
+
+    context "when on a dry run", :silence_deprecations do
+      let(:dry_run_promotion) { promotion }
+
+      subject do
+        order_adjuster.call
+      end
+
+      it "does not create any line items" do
+        expect { subject }.not_to change(Spree::LineItem, :count)
+      end
+
+      it "does not create any adjustments" do
+        expect { subject }.not_to change(Spree::Adjustment, :count)
+      end
+    end
+  end
 
   context "adjusting line items" do
     let(:benefit) do
@@ -18,7 +64,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
 
     subject do
       benefit
-      discounter.call
+      order_adjuster.call
     end
 
     context "promotion with conditionless benefit" do
@@ -26,23 +72,26 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
         it "creates the adjustment" do
           expect {
             subject
-          }.to change { adjustable.adjustments.length }.by(1)
+          }.to change { order.line_items.first.adjustments.length }.by(1)
         end
 
-        it "does not keep the current discounts" do
+        it "updates adjustment labels" do
           subject
-          expect(adjustable.current_discounts).to be_empty
+          expect_any_instance_of(SolidusPromotions::Benefit).to receive(:adjustment_label).and_return("Changed Adjustment Label")
+          expect { order_adjuster.call }
+            .to change { order.line_items.first.adjustments.first.label }
+            .from("Promotion (Because we like you)")
+            .to("Changed Adjustment Label")
         end
 
         context "if order is complete but not shipped" do
           let(:line_item) { order.line_items.first }
           let(:order) { create(:order_ready_to_ship) }
 
-          it "creates the adjustment" do
+          it "builds the adjustment" do
             expect {
               subject
-              order.save
-            }.to change { adjustable.reload.adjustments.length }.by(1)
+            }.to change { order.line_items.first.adjustments.length }.by(1)
           end
 
           context "but the preference to recalculate complete orders is set to false" do
@@ -55,8 +104,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
             it "will not create the adjustment" do
               expect {
                 subject
-                order.save
-              }.not_to change { adjustable.reload.adjustments.length }
+              }.not_to change { order.line_items.first.adjustments.length }
             end
           end
         end
@@ -67,7 +115,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
         it " will not create the adjustment" do
           expect {
             subject
-          }.not_to change { adjustable.adjustments.length }
+          }.not_to change { order.line_items.first.adjustments.reject(&:marked_for_destruction?).length }
         end
       end
 
@@ -83,18 +131,19 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
         it "doesn't create an adjustment" do
           expect {
             subject
-          }.to change { adjustable.adjustments.length }.by(0)
+          }.to change { order.line_items.first.adjustments.length }.by(0)
         end
 
         context "for an line item that has an adjustment from the old promotion system" do
           let(:old_promotion_benefit) { create(:promotion, :with_adjustable_action, apply_automatically: false).actions.first }
           let!(:adjustment) { create(:adjustment, source: old_promotion_benefit, adjustable: line_item) }
 
-          it "removes the old adjustment from the line item" do
+          it "marks the old adjustment for destruction" do
             adjustable.reload
             expect {
               subject
-            }.to change { adjustable.reload.adjustments.length }.by(-1)
+            }.to change { order.line_items.first.adjustments.first.marked_for_destruction? }
+              .from(false).to(true)
           end
         end
       end
@@ -109,7 +158,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
         it "creates the adjustment" do
           expect {
             subject
-          }.to change { adjustable.adjustments.length }.by(1)
+          }.to change { order.line_items.first.adjustments.length }.by(1)
         end
       end
     end
@@ -130,7 +179,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
         it "creates the adjustment" do
           expect {
             subject
-          }.to change { adjustable.adjustments.length }.by(1)
+          }.to change { order.line_items.first.adjustments.length }.by(1)
         end
       end
     end
@@ -144,11 +193,11 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
 
     subject do
       promotion
-      discounter.call
+      order_adjuster.call
     end
 
     it "creates shipping rate discounts" do
-      expect { subject }.to change { SolidusPromotions::ShippingRateDiscount.count }
+      expect { subject }.to change { order.shipments.first.shipping_rates.first.discounts.length }.by(1)
     end
 
     context "if the promo is eligible but the calculcator returns 0" do
@@ -158,7 +207,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
       it "will not create an adjustment on the shipping rate" do
         expect do
           subject
-        end.not_to change { order.shipments.first.shipping_rates.first.discounts.count }
+        end.not_to change { order.shipments.first.shipping_rates.first.discounts.reject(&:marked_for_destruction?).length }
       end
     end
   end
@@ -173,7 +222,7 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
       expect do
         promotion
         subject.call
-      end.to change { order.shipments.first.adjustments.count }
+      end.to change { order.shipments.first.adjustments.length }.from(0).to(1)
     end
 
     context "if the promo is eligible but the calculcator returns 0" do
@@ -184,8 +233,33 @@ RSpec.describe SolidusPromotions::OrderAdjuster, type: :model do
         expect do
           promotion
           subject.call
-        end.not_to change { order.shipments.first.adjustments.count }
+        end.not_to change { order.shipments.first.adjustments.reject(&:marked_for_destruction?).length }
       end
+    end
+  end
+
+  context "with multiple line items" do
+    let(:order) { create(:order_with_line_items, line_items_count: 3) }
+    let!(:benefit) do
+      SolidusPromotions::Benefits::AdjustLineItem.create(promotion: promotion, calculator: calculator)
+    end
+
+    before do
+      order_adjuster.call
+      order.save!
+      order.reload
+    end
+
+    it "loads line item adjustments in a single query" do
+      expect { order_adjuster.call }.to make_database_queries(matching: /from .spree_adjustments..*adjustable_id. IN \(/im, count: 1)
+    end
+
+    it "loads line item variants in a single query" do
+      expect { order_adjuster.call }.to make_database_queries(matching: /from .spree_variants./im, count: 1)
+    end
+
+    it "loads variant products in a single query" do
+      expect { order_adjuster.call }.to make_database_queries(matching: /from .spree_products./im, count: 1)
     end
   end
 end

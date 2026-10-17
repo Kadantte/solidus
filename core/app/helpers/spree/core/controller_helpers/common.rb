@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
-require 'carmen'
+require "carmen"
 
 module Spree
   module Core
     module ControllerHelpers
       module Common
         extend ActiveSupport::Concern
+
         included do
           helper_method :title
           helper_method :title=
@@ -26,8 +27,8 @@ module Spree
         def title
           title_string = @title.presence || accurate_title
           if title_string.present?
-            if Spree::Config[:always_put_site_name_in_title]
-              [title_string, default_title].join(' - ')
+            if Spree::Config.always_put_site_name_in_title
+              [title_string, default_title].join(" - ")
             else
               title_string
             end
@@ -74,7 +75,7 @@ module Spree
         # Default layout is: +app/views/spree/layouts/spree_application+
         #
         def get_layout
-          Spree::Config[:layout]
+          Spree::Config.layout
         end
       end
     end

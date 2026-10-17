@@ -53,11 +53,10 @@ class Spree::OrderCancellations
         end
       end
 
+      @order.refresh_shipment_rates
       @order.recalculate
 
-      if short_ship_tax_notifier
-        short_ship_tax_notifier.call(unit_cancels)
-      end
+      short_ship_tax_notifier&.call(unit_cancels)
     end
 
     Spree::Bus.publish(:order_short_shipped, order: @order, inventory_units:)
@@ -115,7 +114,7 @@ class Spree::OrderCancellations
       reason: Spree::UnitCancel::SHORT_SHIP,
       created_by:
     )
-    unit_cancel.adjust!
+    unit_cancel.adjust!(@order.line_items.detect { |line_item| line_item.id == inventory_unit.line_item_id })
     inventory_unit.cancel!
 
     unit_cancel

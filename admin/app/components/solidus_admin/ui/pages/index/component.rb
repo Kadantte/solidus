@@ -6,19 +6,48 @@ class SolidusAdmin::UI::Pages::Index::Component < SolidusAdmin::BaseComponent
   Tab = Struct.new(:text, :href, :current, keyword_init: true)
 
   # Template methods
-  def tabs; end
-  def model_class; end
-  def back_url; end
-  def search_key; end
-  def search_url; end
-  def page_actions; end
-  def sidebar; end
-  def sortable_options; end
-  def row_url(_record); end
-  def batch_actions; []; end
-  def scopes; []; end
-  def filters; []; end
-  def columns; []; end
+  def tabs
+  end
+
+  def model_class
+  end
+
+  def back_url
+  end
+
+  def search_key
+  end
+
+  def search_url
+  end
+
+  def page_actions
+  end
+
+  def sidebar
+  end
+
+  def sortable_options
+  end
+
+  def row_url(_record)
+  end
+
+  def batch_actions
+    []
+  end
+
+  def scopes
+    []
+  end
+
+  def filters
+    []
+  end
+
+  def columns
+    []
+  end
 
   def initialize(page:)
     @page = page
@@ -51,11 +80,11 @@ class SolidusAdmin::UI::Pages::Index::Component < SolidusAdmin::BaseComponent
   end
 
   def prev_page_path
-    solidus_admin.url_for(**request.params, page: @page.number - 1, only_path: true) unless @page.first?
+    solidus_admin.url_for(**request.params, page: @page.current_page - 1, only_path: true) if @page && !@page.first_page?
   end
 
   def next_page_path
-    solidus_admin.url_for(**request.params, page: @page.next_param, only_path: true) unless @page.last?
+    solidus_admin.url_for(**request.params, page: @page.next_page, only_path: true) if @page&.next_page
   end
 
   def search_options
@@ -67,7 +96,7 @@ class SolidusAdmin::UI::Pages::Index::Component < SolidusAdmin::BaseComponent
       url: search_url,
       searchbar_key: search_key,
       filters:,
-      scopes:,
+      scopes:
     }
   end
 
@@ -76,12 +105,12 @@ class SolidusAdmin::UI::Pages::Index::Component < SolidusAdmin::BaseComponent
 
     safe_join [
       (page_header_back back_url if back_url),
-      page_header_title(title),
+      page_header_title(title)
     ]
   end
 
   def render_table
-    render component('ui/table').new(
+    render component("ui/table").new(
       id: stimulus_id,
       data: {
         class: model_class,
@@ -92,11 +121,11 @@ class SolidusAdmin::UI::Pages::Index::Component < SolidusAdmin::BaseComponent
         columns:,
         batch_actions:,
         url: -> { row_url(_1) },
-        page: @page.number,
-        per_page: @page.recordset.ratios.fixed,
+        page: @page&.current_page,
+        per_page: @page&.limit_value
       },
       search: search_options,
-      sortable: sortable_options,
+      sortable: sortable_options
     )
   end
 

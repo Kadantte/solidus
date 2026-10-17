@@ -3,8 +3,9 @@
 module SolidusAdmin
   module Generators
     class InstallGenerator < Rails::Generators::Base
-      class_option :lookbook, type: :boolean, default: !!ENV['SOLIDUS_ADMIN_LOOKBOOK'], desc: 'Install Lookbook for component previews'
-      class_option :tailwind, type: :boolean, default: false, desc: 'Install TailwindCSS for custom components'
+      class_option :alpha_features, type: :boolean, default: !!ENV["SOLIDUS_ADMIN_ALPHA_FEATURES"], desc: "Enable unstable alpha features currently in development."
+      class_option :lookbook, type: :boolean, default: !!ENV["SOLIDUS_ADMIN_LOOKBOOK"], desc: "Install Lookbook for component previews"
+      class_option :tailwind, type: :boolean, default: false, desc: "Install TailwindCSS for custom components"
 
       source_root "#{__dir__}/templates"
 
@@ -18,7 +19,9 @@ module SolidusAdmin
       end
 
       def copy_initializer
-        template 'config/initializers/solidus_admin.rb.tt', 'config/initializers/solidus_admin.rb'
+        template "config/initializers/solidus_admin.rb.tt",
+          "config/initializers/solidus_admin.rb",
+          enable_alpha_features: options[:alpha_features]
       end
 
       def ignore_tailwind_build_files
@@ -38,12 +41,25 @@ module SolidusAdmin
           gem "actioncable"
         end
 
-        require 'bundler'
+        require "bundler"
         Bundler.with_unbundled_env do
-          execute_command :bundle, :install
+          run "bundle install"
         end
 
-        route "mount Lookbook::Engine, at: '#{solidus_mount_point}lookbook' if Rails.env.development?"
+        route <<~RUBY
+          if Rails.env.development?
+            lookbook_root_path = "#{solidus_mount_point}lookbook"
+
+            constraints ->(req) { req.env["warden"]&.user&.admin? } do
+              mount Lookbook::Engine, at: lookbook_root_path
+            end
+
+            get lookbook_root_path, to: redirect { |_, req|
+              req.flash[:alert] = "Lookbook is only available to admin users."
+              "#{solidus_mount_point}admin/login"
+            }
+          end
+        RUBY
       end
 
       private

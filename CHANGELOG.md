@@ -1,3 +1,298 @@
+## Solidus v4.8.0 (2026-10-09)
+
+<!-- Please, don't edit manually. The content is automatically generated. -->
+
+## Solidus
+
+* Document MariaDB support in README by @robertsilen in https://github.com/solidusio/solidus/pull/6485
+* Link main README installation to storefront docs by @SiddharthGautam040 in https://github.com/solidusio/solidus/pull/6517
+* Fix docker run instructions and hardcode internal port by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6567
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Update stale CI/CD info in the README by @benjaminwil in https://github.com/solidusio/solidus/pull/6582
+
+## Solidus Core
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Remove kaminari-activerecord from solidus_core by @tvdeyen in https://github.com/solidusio/solidus/pull/6445
+* Only fire order recalculated events after save by @jarednorman in https://github.com/solidusio/solidus/pull/6447
+* Remove redundant item total setting by @jarednorman in https://github.com/solidusio/solidus/pull/6450
+* Handle state change of shipments without inventory units by @sofiabesenski4 in https://github.com/solidusio/solidus/pull/6479
+* Make SimpleCoordinator inventory_units keyword arg by @sofiabesenski4 in https://github.com/solidusio/solidus/pull/6483
+* Don't "persist_amounts" in order recalculation by @jarednorman in https://github.com/solidusio/solidus/pull/6451
+* Bump discard requirement by @jarednorman in https://github.com/solidusio/solidus/pull/6488
+* Return BigDecimal from FlatRate zero branches by @minhluuquang in https://github.com/solidusio/solidus/pull/6507
+* Avoid redundant queries when recalculating payment totals by @ikraamg in https://github.com/solidusio/solidus/pull/6494
+* Merge solidus_starter_frontend in as "storefront" by @jarednorman in https://github.com/solidusio/solidus/pull/6468
+* Preload variants when building inventory units to avoid an N+1 by @ikraamg in https://github.com/solidusio/solidus/pull/6498
+* Validate order number uniqueness only when it changes by @ikraamg in https://github.com/solidusio/solidus/pull/6493
+* Preload variant and product when calculating taxes to avoid an N+1 by @ikraamg in https://github.com/solidusio/solidus/pull/6497
+* Make PayPal optional to fix solidus_stripe specs by @AlistairNorman in https://github.com/solidusio/solidus/pull/6519
+* Fix: {LineItem;Shipment}#total_before_tax: Ignore stale adjustments by @mamhoff in https://github.com/solidusio/solidus/pull/6521
+* Delegate create_proposed_shipments to Spree::OrderShipping by @sofiabesenski4 in https://github.com/solidusio/solidus/pull/6509
+* Fix a few test environment issues by @elia in https://github.com/solidusio/solidus/pull/6532
+* fix(core): permit Symbol and HashWithIndifferentAccess in log entries by @tvdeyen in https://github.com/solidusio/solidus/pull/6529
+* feat(log_entry): write details unparsed and validate on read by @tvdeyen in https://github.com/solidusio/solidus/pull/6530
+* Reuse the order's line items when building a shipping manifest by @mamhoff in https://github.com/solidusio/solidus/pull/6524
+* Add Time Zone Select by @tvdeyen in https://github.com/solidusio/solidus/pull/6437
+* Remove references to mb_chars by @AlistairNorman in https://github.com/solidusio/solidus/pull/6541
+* Abort solidus:install on migration/seed rake failures by @wakqasahmed in https://github.com/solidusio/solidus/pull/6553
+* Relax kt-paperclip dependency by @adammathys in https://github.com/solidusio/solidus/pull/6571
+* Address Licensing Issues by @jarednorman in https://github.com/solidusio/solidus/pull/6559
+* Don't Allow Refunding Non-Refundable Payments by @jarednorman in https://github.com/solidusio/solidus/pull/6565
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* Deprecate Orphaned Preferences by @jarednorman in https://github.com/solidusio/solidus/pull/6575
+* Test "DEPRECATION WARNING" text output by @benjaminwil in https://github.com/solidusio/solidus/pull/6584
+* Prevent JSON 3.0 from breaking solidus_admin when using Rails 8.0 by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6588
+* [solidus_admin] Add stores editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6589
+* Fall back to preference defaults for static preference sources by @AlistairNorman in https://github.com/solidusio/solidus/pull/6616
+* feat(api): Eager load images in products and variants endpoints by @tvdeyen in https://github.com/solidusio/solidus/pull/6612
+* Skip VAT price generation without a valid price by @jarednorman in https://github.com/solidusio/solidus/pull/6566
+* [solidus_admin] Add tax rates editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6617
+* Remove order.reload from Payment#gateway_options by @mamhoff in https://github.com/solidusio/solidus/pull/6627
+* Touch taxons one at a time in id order by @AlistairNorman in https://github.com/solidusio/solidus/pull/6609
+* [solidus_admin] Add payment methods editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6619
+* Avoid N+1s when calling `Spree::Taxon#pretty_name` by @benjaminwil in https://github.com/solidusio/solidus/pull/6638
+* Prevent creation of customer returns when the order has no shipped inventory units by @AlistairNorman in https://github.com/solidusio/solidus/pull/6614
+* [solidus_admin] Add product taxon management by @benjaminwil in https://github.com/solidusio/solidus/pull/6610
+* Revert "Avoid N+1s when calling `Spree::Taxon#pretty_name`" by @tvdeyen in https://github.com/solidusio/solidus/pull/6647
+* Add the ability to add an address to a store by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6649
+* Don't include cancelled items in flexirate shipping calculation by @senemsoy in https://github.com/solidusio/solidus/pull/6644
+* Remove Rubocop directives for cops Standard doesn't load by @forkata in https://github.com/solidusio/solidus/pull/6671
+
+## Solidus Admin
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Fix a few test environment issues by @elia in https://github.com/solidusio/solidus/pull/6532
+* Add Time Zone Select by @tvdeyen in https://github.com/solidusio/solidus/pull/6437
+* Address Licensing Issues by @jarednorman in https://github.com/solidusio/solidus/pull/6559
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* Prevent JSON 3.0 from breaking solidus_admin when using Rails 8.0 by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6588
+* [solidus_admin] Add stores editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6589
+* [solidus_admin] Add tax rates editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6617
+* [solidus_admin] Add payment methods editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6619
+* [solidus_admin] Add product taxon management by @benjaminwil in https://github.com/solidusio/solidus/pull/6610
+* Add the ability to add an address to a store by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6649
+* Remove Rubocop directives for cops Standard doesn't load by @forkata in https://github.com/solidusio/solidus/pull/6671
+* fix(locale selection): Use international language icon by @tvdeyen in https://github.com/solidusio/solidus/pull/6439
+* Update remixicon sprite to v4.9.1 by @tvdeyen in https://github.com/solidusio/solidus/pull/6438
+* Improve Solidus Admin Orders Loading Performance by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6440
+* solidus_admin: Improve Products loading performance by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6444
+* Preserve Tailwind's default blue color scale by @johnmamanao in https://github.com/solidusio/solidus/pull/6453
+* Eager load line item details on the admin order page to avoid N+1s by @ikraamg in https://github.com/solidusio/solidus/pull/6500
+* Avoid an N+1 loading stock on the admin products index by @ikraamg in https://github.com/solidusio/solidus/pull/6495
+* Admin Orders spec: Do not restrict Line Item loading from setup by @mamhoff in https://github.com/solidusio/solidus/pull/6522
+* Eager load associations in admin and API collection endpoints by @ikraamg in https://github.com/solidusio/solidus/pull/6504
+* Admin confirm modal without external dependency by @forkata in https://github.com/solidusio/solidus/pull/6528
+* fix(admin): Guard timezone select to support older solidus versions by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6542
+* Passing a hash to resources is deprecated by @adammathys in https://github.com/solidusio/solidus/pull/6570
+* Enable admin alpha features by default during sandbox app generation by @benjaminwil in https://github.com/solidusio/solidus/pull/6586
+* [solidus_admin] Add option types and option values editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6605
+* [solidus_admin] Use button for panel action by @tvdeyen in https://github.com/solidusio/solidus/pull/6606
+* [solidus_admin] Lower base font size by @tvdeyen in https://github.com/solidusio/solidus/pull/6607
+* Save solidus_admin artifacts during Actions workflows by @benjaminwil in https://github.com/solidusio/solidus/pull/6611
+* [solidus_admin] Make payment method autocapture setting correct by @benjaminwil in https://github.com/solidusio/solidus/pull/6641
+* [solidus_admin] Improve microcopy for payment method editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6639
+* [solidus_admin] Payment method form improvements by @benjaminwil in https://github.com/solidusio/solidus/pull/6640
+* Allow `SolidusSelect` to prepopulate selected options when using a remote data source by @benjaminwil in https://github.com/solidusio/solidus/pull/6648
+* Form cleanup and reverting changes to `SolidusSelect` by @benjaminwil in https://github.com/solidusio/solidus/pull/6652
+* Scope order customer assignment to users the admin can read by @jarednorman in https://github.com/solidusio/solidus/pull/6659
+* Wait for store form before running axe by @jarednorman in https://github.com/solidusio/solidus/pull/6672
+
+## Solidus Backend
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Reuse the order's line items when building a shipping manifest by @mamhoff in https://github.com/solidusio/solidus/pull/6524
+* Add Time Zone Select by @tvdeyen in https://github.com/solidusio/solidus/pull/6437
+* Address Licensing Issues by @jarednorman in https://github.com/solidusio/solidus/pull/6559
+* Don't Allow Refunding Non-Refundable Payments by @jarednorman in https://github.com/solidusio/solidus/pull/6565
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* Add the ability to add an address to a store by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6649
+* Don't include cancelled items in flexirate shipping calculation by @senemsoy in https://github.com/solidusio/solidus/pull/6644
+* fix(locale selection): Use international language icon by @tvdeyen in https://github.com/solidusio/solidus/pull/6439
+* Eager load associations in admin and API collection endpoints by @ikraamg in https://github.com/solidusio/solidus/pull/6504
+* Save solidus_admin artifacts during Actions workflows by @benjaminwil in https://github.com/solidusio/solidus/pull/6611
+* Scope order customer assignment to users the admin can read by @jarednorman in https://github.com/solidusio/solidus/pull/6659
+* Include refund logs in payment log listing by @sofiabesenski4 in https://github.com/solidusio/solidus/pull/6486
+* Namespace the legacy backend favicon by @AlistairNorman in https://github.com/solidusio/solidus/pull/6613
+* Restrict payment fire to payment actions by @jarednorman in https://github.com/solidusio/solidus/pull/6660
+
+## Solidus API
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Remove kaminari-activerecord from solidus_core by @tvdeyen in https://github.com/solidusio/solidus/pull/6445
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* feat(api): Eager load images in products and variants endpoints by @tvdeyen in https://github.com/solidusio/solidus/pull/6612
+* Add the ability to add an address to a store by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6649
+* Eager load associations in admin and API collection endpoints by @ikraamg in https://github.com/solidusio/solidus/pull/6504
+* [solidus_admin] Add option types and option values editor by @benjaminwil in https://github.com/solidusio/solidus/pull/6605
+* Scope order customer assignment to users the admin can read by @jarednorman in https://github.com/solidusio/solidus/pull/6659
+* Eager load variant stock on the products API index to avoid an N+1 by @ikraamg in https://github.com/solidusio/solidus/pull/6501
+* Explicitly use exception for protect_from_forgery by @adammathys in https://github.com/solidusio/solidus/pull/6568
+* Scope transfer destination stock location by @jarednorman in https://github.com/solidusio/solidus/pull/6661
+
+## Solidus Sample
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* Prevent creation of customer returns when the order has no shipped inventory units by @AlistairNorman in https://github.com/solidusio/solidus/pull/6614
+* Make db sample idempotent by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6555
+
+## Solidus Promotions
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* Promotions: Create PromotionEligibilityChecker by @mamhoff in https://github.com/solidusio/solidus/pull/6430
+* Handle duplicate base_codes in PromotionMigrator by @jarednorman in https://github.com/solidusio/solidus/pull/6441
+* Fix SolidusPromotion OrderRecalculator patch by @sofiabesenski4 in https://github.com/solidusio/solidus/pull/6480
+* Add TaxonRevenue condition by @mamhoff in https://github.com/solidusio/solidus/pull/6492
+* Preload adjustments in promotion recalculation to avoid an N+1 by @ikraamg in https://github.com/solidusio/solidus/pull/6496
+* TaxonRevenue condition: Add "exclude" match policy by @mamhoff in https://github.com/solidusio/solidus/pull/6518
+* Preload line item variants and products in the promotions order adjuster by @ikraamg in https://github.com/solidusio/solidus/pull/6525
+* Add privilege and category to legacy_promotions and promotion permission sets by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6554
+* Remove adjustments from cart orders when promotion is discarded by @mamhoff in https://github.com/solidusio/solidus/pull/6557
+* Only mark zero-amount promotion adjustments for destruction by @mamhoff in https://github.com/solidusio/solidus/pull/6628
+
+## Solidus Legacy Promotions
+
+* Correct Licensing of Solidus Gems by @jarednorman in https://github.com/solidusio/solidus/pull/6560
+* Align config accessors by @jarednorman in https://github.com/solidusio/solidus/pull/6577
+* Preload adjustments in promotion recalculation to avoid an N+1 by @ikraamg in https://github.com/solidusio/solidus/pull/6496
+* Add privilege and category to legacy_promotions and promotion permission sets by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6554
+* Remove deprecated partial by @BrentWheeldon in https://github.com/solidusio/solidus/pull/6431
+* Persist line item action quantity when updated by @AlistairNorman in https://github.com/solidusio/solidus/pull/6443
+* Preload variants when checking order promotionability to avoid an N+1 by @ikraamg in https://github.com/solidusio/solidus/pull/6499
+
+## Solidus Storefront
+
+* Remove references to undefined attachment styles by @benjaminwil in https://github.com/solidusio/solidus/pull/6583
+* Reduce permitted attributes for cart update by @adammathys in https://github.com/solidusio/solidus/pull/6636
+* Use storefront pricing by @jarednorman in https://github.com/solidusio/solidus/pull/6668
+* Drive storefront system specs with headless Firefox by @jarednorman in https://github.com/solidusio/solidus/pull/6669
+
+## Solidus I18n
+
+* i18n(pt-BR): restore %{…} interpolations dropped from 13 strings by @owgreen-dev in https://github.com/solidusio/solidus/pull/6626
+* i18n(nl, pl): restore %{names} in inventory_error_flash_for_insufficient_quantity by @owgreen-dev in https://github.com/solidusio/solidus/pull/6637
+* Check solidus_i18n interpolations against solidus_core's en.yml by @owgreen-dev in https://github.com/solidusio/solidus/pull/6655
+
+**Full Changelog**: https://github.com/solidusio/solidus/compare/v4.7.0...v4.8.0
+
+
+## Solidus v4.7.0 (2026-04-15)
+
+<!-- Please, don't edit manually. The content is automatically generated. -->
+
+## Solidus
+
+* Add changelog and source code URI to gemspec by @zirni in https://github.com/solidusio/solidus/pull/6364
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+
+## Solidus Core
+
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+* Fix shipment adjustments not persisting on order recalculate by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6334
+* Fix misnamed shipping_categories table in 4.6.0 migration comment by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6341
+* Configurable stock quantifier by @mamhoff in https://github.com/solidusio/solidus/pull/6335
+* Allow optional passing of options to calculators by @mamhoff in https://github.com/solidusio/solidus/pull/6346
+* Prevent merging of non-frontend-viewable orders by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6362
+* [Admin][Products] Product option types list by @chaimann in https://github.com/solidusio/solidus/pull/6283
+* Fix Rubocop offenses for November 2025 by @mamhoff in https://github.com/solidusio/solidus/pull/6372
+* Rename order updater methods to better reflect behaviour by @Noah-Silvera in https://github.com/solidusio/solidus/pull/6368
+* Remove `inverse_of` from Spree::Adjustment#order by @mamhoff in https://github.com/solidusio/solidus/pull/6373
+* Autosave changed shipping rates by @mamhoff in https://github.com/solidusio/solidus/pull/6374
+* Improve order updater test coverage by @AlistairNorman in https://github.com/solidusio/solidus/pull/6377
+* feat: Allow to overwrite track_state_change? by @tvdeyen in https://github.com/solidusio/solidus/pull/6380
+* feat: Make state change tracker a configurable class by @tvdeyen in https://github.com/solidusio/solidus/pull/6375
+* Build discounted linte items in memory by @forkata in https://github.com/solidusio/solidus/pull/6385
+* Mark non-applicable promotion adjustments for destruction by @forkata in https://github.com/solidusio/solidus/pull/6382
+* Configurable Order Mergeable Scope by @ThuktenSingye in https://github.com/solidusio/solidus/pull/6384
+* Allow to recalculate cart prices by @mamhoff in https://github.com/solidusio/solidus/pull/6399
+* Fix Sprockets Dependency by @jarednorman in https://github.com/solidusio/solidus/pull/6404
+* Allow Rails 8.1 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6409
+* Fix return item initialization in backend by @forkata in https://github.com/solidusio/solidus/pull/6411
+* Remove product filters require by @forkata in https://github.com/solidusio/solidus/pull/6408
+* Fix linting by @AlistairNorman in https://github.com/solidusio/solidus/pull/6420
+* Require Rails 7.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6414
+* Add tax_category_id method to Spree::Product by @sascha-karnatz in https://github.com/solidusio/solidus/pull/6423
+* In-memory order updater by @benjaminwil in https://github.com/solidusio/solidus/pull/5872
+* Fix order walkthrough for iso uniqueness by @AlistairNorman in https://github.com/solidusio/solidus/pull/6432
+
+## Solidus Admin
+
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+* [Admin][Products] Product option types list by @chaimann in https://github.com/solidusio/solidus/pull/6283
+* Fix Rubocop offenses for November 2025 by @mamhoff in https://github.com/solidusio/solidus/pull/6372
+* Fix linting by @AlistairNorman in https://github.com/solidusio/solidus/pull/6420
+* In-memory order updater by @benjaminwil in https://github.com/solidusio/solidus/pull/5872
+* Fix sandbox lookbook installation by @AlistairNorman in https://github.com/solidusio/solidus/pull/6417
+
+## Solidus Backend
+
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+* Fix Sprockets Dependency by @jarednorman in https://github.com/solidusio/solidus/pull/6404
+* Fix return item initialization in backend by @forkata in https://github.com/solidusio/solidus/pull/6411
+* Fix linting by @AlistairNorman in https://github.com/solidusio/solidus/pull/6420
+
+## Solidus API
+
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+* Fix linting by @AlistairNorman in https://github.com/solidusio/solidus/pull/6420
+
+## Solidus Sample
+
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+
+## Solidus Promotions
+
+* Require Ruby 3.2 by @AlistairNorman in https://github.com/solidusio/solidus/pull/6413
+* Switch to standardrb by @AlistairNorman in https://github.com/solidusio/solidus/pull/6421
+* Allow optional passing of options to calculators by @mamhoff in https://github.com/solidusio/solidus/pull/6346
+* Autosave changed shipping rates by @mamhoff in https://github.com/solidusio/solidus/pull/6374
+* Improve order updater test coverage by @AlistairNorman in https://github.com/solidusio/solidus/pull/6377
+* Build discounted linte items in memory by @forkata in https://github.com/solidusio/solidus/pull/6385
+* Mark non-applicable promotion adjustments for destruction by @forkata in https://github.com/solidusio/solidus/pull/6382
+* Fix linting by @AlistairNorman in https://github.com/solidusio/solidus/pull/6420
+* In-memory order updater by @benjaminwil in https://github.com/solidusio/solidus/pull/5872
+* Refactor: Move rounding to promotion calculator module by @mamhoff in https://github.com/solidusio/solidus/pull/6332
+* Promotions Percent Calculator: Allow fractional percent by @mamhoff in https://github.com/solidusio/solidus/pull/6330
+* Promotions: First Order condition must not fail on canceled orders by @mamhoff in https://github.com/solidusio/solidus/pull/6343
+* feat(Promotion): Make ordered lanes an array by @tvdeyen in https://github.com/solidusio/solidus/pull/6345
+* Flat Rate calculator: Do not override #compute by @mamhoff in https://github.com/solidusio/solidus/pull/6349
+* DistributedAmount Calculator: Add YARD docs by @mamhoff in https://github.com/solidusio/solidus/pull/6350
+* FlexiRate calculator: Add YARD docs by @mamhoff in https://github.com/solidusio/solidus/pull/6351
+* Fix percent calculator dispatch by @mamhoff in https://github.com/solidusio/solidus/pull/6352
+* Add YARD docs to TieredFlatRate promo calculator by @mamhoff in https://github.com/solidusio/solidus/pull/6353
+* Add yard docs to solidus promotions condition by @mamhoff in https://github.com/solidusio/solidus/pull/6358
+* Add YARD docs to SolidusPromotions::Benefit by @mamhoff in https://github.com/solidusio/solidus/pull/6359
+* Improve promotion condition API by @mamhoff in https://github.com/solidusio/solidus/pull/6360
+* Refactor tiered calculators by @mamhoff in https://github.com/solidusio/solidus/pull/6354
+* Deprecate promotion "level" by @mamhoff in https://github.com/solidusio/solidus/pull/6357
+* Create single-responsibility conditions for products, taxons, and option values by @mamhoff in https://github.com/solidusio/solidus/pull/6363
+* Move shared examples for promo calculators to lib/ by @mamhoff in https://github.com/solidusio/solidus/pull/6367
+* `DiscountOrder`: Use `#filter_map` everywhere by @mamhoff in https://github.com/solidusio/solidus/pull/6369
+* Fix line item option condition params by @manleyac in https://github.com/solidusio/solidus/pull/6233
+* Coupon Code Case Sensitive by @ThuktenSingye in https://github.com/solidusio/solidus/pull/6331
+* Make OrderRecalculatorPatch prepend explicit by @AlistairNorman in https://github.com/solidusio/solidus/pull/6376
+* Promotions: Fix default calculator fields partial bug and make PercentWithCap calculator available in the UI by @mamhoff in https://github.com/solidusio/solidus/pull/6381
+* Remove benefit "level" mixins by @mamhoff in https://github.com/solidusio/solidus/pull/6378
+* Allow promotion conditions to work with in-memory line items, improve performance by @mamhoff in https://github.com/solidusio/solidus/pull/6383
+* Add `#discounted_amount` by adjustments by @mamhoff in https://github.com/solidusio/solidus/pull/6379
+* Discountable amounts by adjustments by @mamhoff in https://github.com/solidusio/solidus/pull/6371
+* Allow promotion calculators to set dynamic adjustment labels by @mamhoff in https://github.com/solidusio/solidus/pull/6398
+* OrderPromotions: Validate promotion uniqueness per order by @mamhoff in https://github.com/solidusio/solidus/pull/6424
+* Change promotion condition configuration to be flat by @mamhoff in https://github.com/solidusio/solidus/pull/6425
+* Allow strikethrough prices to be calculated for variants by @mamhoff in https://github.com/solidusio/solidus/pull/6287
+* Promotions: Fix eligibility calculation in dry runs by @mamhoff in https://github.com/solidusio/solidus/pull/6429
+
+**Full Changelog**: https://github.com/solidusio/solidus/compare/v4.6.0...v4.7.0
+
+
 ## Solidus v4.6.0 (2025-09-09)
 
 <!-- Please, don't edit manually. The content is automatically generated. -->

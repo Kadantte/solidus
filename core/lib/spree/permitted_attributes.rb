@@ -73,7 +73,7 @@ module Spree
 
     @@option_type_attributes = [:name, :presentation, option_values_attributes: option_value_attributes]
 
-    @@payment_attributes = [:amount, :payment_method_id, :payment_method, customer_metadata: {}]
+    @@payment_attributes = [:payment_method_id, :payment_method, customer_metadata: {}]
 
     @@product_properties_attributes = [:property_name, :value, :position]
 
@@ -89,13 +89,13 @@ module Spree
     @@property_attributes = [:name, :presentation]
 
     @@return_authorization_attributes = [:memo, :stock_location_id, :return_reason_id,
-                                         customer_metadata: {},
-                                         return_items_attributes: [
-                                           :inventory_unit_id,
-                                           :exchange_variant_id,
-                                           :return_reason_id,
-                                           :preferred_reimbursement_type_id
-                                         ]]
+      customer_metadata: {},
+      return_items_attributes: [
+        :inventory_unit_id,
+        :exchange_variant_id,
+        :return_reason_id,
+        :preferred_reimbursement_type_id
+      ]]
 
     @@shipment_attributes = [
       :special_instructions, :stock_location_id, :id, :tracking,
@@ -123,9 +123,10 @@ module Spree
     ]
 
     @@store_attributes = [:name, :url, :seo_title, :meta_keywords,
-                          :meta_description, :default_currency,
-                          :mail_from_address, :cart_tax_country_iso,
-                          :bcc_email, :reverse_charge_status]
+      :meta_description, :default_currency,
+      :mail_from_address, :cart_tax_country_iso,
+      :bcc_email, :reverse_charge_status,
+      address_attributes:]
 
     @@taxonomy_attributes = [:name]
 
@@ -138,7 +139,7 @@ module Spree
     # by changing a user with higher priveleges' email to one a lower-priveleged
     # admin owns. Creating a user with an email is handled separate at the
     # controller level.
-    @@user_attributes = [:password, :password_confirmation, customer_metadata: {}]
+    @@user_attributes = [:password, :password_confirmation, :timezone, customer_metadata: {}]
 
     @@variant_attributes = [
       :name, :presentation, :cost_price, :lock_version,
@@ -165,6 +166,8 @@ module Spree
 
     @@checkout_payment_attributes = [
       payments_attributes: payment_attributes + [
+        :amount,
+        :id,
         source_attributes:
       ]
     ]

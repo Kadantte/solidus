@@ -187,6 +187,45 @@ RSpec.describe SolidusPromotions::PromotionHandler::Coupon, type: :model do
           end
         end
       end
+
+      context "with case sensitive coupon code" do
+        before do
+          stub_const("CaseSensitiveNormalizer", Class.new do
+            def self.call(value)
+              value&.strip
+            end
+          end)
+
+          stub_spree_preferences(
+            SolidusPromotions.configuration,
+            coupon_code_normalizer_class: CaseSensitiveNormalizer
+          )
+        end
+
+        context "with exact case match" do
+          before { order.coupon_code = "10off" }
+
+          it "successfully activates promo" do
+            expect(order.total).to eq(130)
+            subject.apply
+            expect(subject.success).to be_present
+            expect_order_connection(order: order, promotion: promotion, promotion_code: promotion_code)
+            expect(order.reload.total).to eq(100)
+          end
+        end
+
+        context "with incorrect case" do
+          before { order.coupon_code = "10OFF" }
+
+          it "fails to activate promo" do
+            expect(order.total).to eq(130)
+            subject.apply
+            expect(subject.success).to be_blank
+            expect(subject.error).to eq("The coupon code you entered doesn't exist. Please try again.")
+            expect(order.reload.total).to eq(130)
+          end
+        end
+      end
     end
 
     context "with a free-shipping adjustment benefit" do
@@ -220,12 +259,56 @@ RSpec.describe SolidusPromotions::PromotionHandler::Coupon, type: :model do
           expect(subject.error).to eq "The coupon code has already been applied to this order"
         end
       end
+
+      context "with case sensitive coupon code" do
+        before do
+          stub_const("CaseSensitiveNormalizer", Class.new do
+            def self.call(value)
+              value&.strip
+            end
+          end)
+
+          stub_spree_preferences(
+            SolidusPromotions.configuration,
+            coupon_code_normalizer_class: CaseSensitiveNormalizer
+          )
+        end
+
+        let(:order) { create(:order_with_line_items, line_items_count: 3) }
+
+        context "with exact case match" do
+          before { order.coupon_code = "10off" }
+
+          it "successfully activates promo" do
+            expect(order.total).to eq(130)
+            subject.apply
+            expect(subject.success).to be_present
+
+            expect_order_connection(order: order, promotion: promotion, promotion_code: promotion_code)
+            order.shipments.each do |shipment|
+              expect_adjustment_creation(adjustable: shipment, promotion: promotion)
+            end
+          end
+        end
+
+        context "with incorrect case" do
+          before { order.coupon_code = "10OFF" }
+
+          it "fails to activate promo" do
+            expect(order.total).to eq(130)
+            subject.apply
+            expect(subject.success).to be_blank
+            expect(subject.error).to eq("The coupon code you entered doesn't exist. Please try again.")
+            expect(order.reload.total).to eq(130)
+          end
+        end
+      end
     end
 
     context "with a whole-order adjustment benefit" do
       let!(:benefit) { SolidusPromotions::Benefits::AdjustLineItem.create(promotion: promotion, calculator: calculator) }
       context "right coupon given" do
-        let(:order) { create(:order) }
+        let(:order) { create(:order_with_line_items) }
         let(:calculator) { SolidusPromotions::Calculators::DistributedAmount.new(preferred_amount: 10) }
 
         before do
@@ -425,8 +508,8 @@ RSpec.describe SolidusPromotions::PromotionHandler::Coupon, type: :model do
   context "with multiple errors" do
     let(:shirt) { create(:product) }
     let(:hat) { create(:product) }
-    let(:order) { create(:order_with_line_items, coupon_code: "XMAS", line_items_attributes: [{ variant: shirt.master, quantity: 1 }]) }
-    let(:product_condition) { SolidusPromotions::Conditions::Product.new(products: [hat], preferred_line_item_applicable: false) }
+    let(:order) { create(:order_with_line_items, coupon_code: "XMAS", line_items_attributes: [{variant: shirt.master, quantity: 1}]) }
+    let(:product_condition) { SolidusPromotions::Conditions::OrderProduct.new(products: [hat]) }
     let(:nth_order_condition) { SolidusPromotions::Conditions::NthOrder.new(preferred_nth_order: 2) }
     let(:ten_off_items) { SolidusPromotions::Calculators::Percent.create!(preferred_percent: 10) }
     let(:line_item_benefit) { SolidusPromotions::Benefits::AdjustLineItem.new(calculator: ten_off_items, conditions: conditions) }

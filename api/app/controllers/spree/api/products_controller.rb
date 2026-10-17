@@ -8,21 +8,15 @@ module Spree
           ids = params[:ids].split(",").flatten
           @products = product_scope.where(id: ids)
         else
-          products_includes = [
-            :variants,
-            :option_types,
-            :product_properties,
-            { classifications: :taxon }
-          ]
           @products = product_scope
-                        .ransack(params[:q])
-                        .result
-                        .includes(products_includes)
+            .ransack(params[:q])
+            .result
         end
 
+        @products = @products.includes(products_includes)
         @products = paginate(@products.distinct)
         expires_in 15.minutes, public: true
-        headers['Surrogate-Control'] = "max-age=#{15.minutes}"
+        headers["Surrogate-Control"] = "max-age=#{15.minutes}"
         respond_with(@products)
       end
 
@@ -32,8 +26,8 @@ module Spree
       def show
         @product = find_product(params[:id])
         expires_in 15.minutes, public: true
-        headers['Surrogate-Control'] = "max-age=#{15.minutes}"
-        headers['Surrogate-Key'] = "product_id=1"
+        headers["Surrogate-Control"] = "max-age=#{15.minutes}"
+        headers["Surrogate-Key"] = "product_id=1"
         respond_with(@product)
       end
 
@@ -75,7 +69,7 @@ module Spree
         params[:product][:available_on] ||= Time.current
         set_up_shipping_category
 
-        options = { variants_attrs: variants_params, options_attrs: option_types_params }
+        options = {variants_attrs: variants_params, options_attrs: option_types_params}
         @product = Core::Importer::Product.new(nil, product_params, options).create
 
         if @product.persisted?
@@ -89,7 +83,7 @@ module Spree
         @product = find_product(params[:id])
         authorize! :update, @product
 
-        options = { variants_attrs: variants_params, options_attrs: option_types_params }
+        options = {variants_attrs: variants_params, options_attrs: option_types_params}
         @product = Core::Importer::Product.new(@product, product_params, options).update
 
         if @product.errors.empty?
@@ -108,10 +102,23 @@ module Spree
 
       private
 
+      def products_includes
+        [
+          :option_types,
+          :product_properties,
+          {classifications: :taxon},
+          {master: variants_includes},
+          {variants: variants_includes},
+          {variants_including_master: variants_includes}
+        ]
+      end
+
+      def variants_includes = {stock_items: :stock_location, images: Spree::Image.attachment_preloads}
+
       def product_params
         product_params = params.require(:product).permit(permitted_product_attributes)
         if product_params[:taxon_ids].present?
-          product_params[:taxon_ids] = product_params[:taxon_ids].split(',')
+          product_params[:taxon_ids] = product_params[:taxon_ids].split(",")
         end
         product_params
       end
@@ -133,7 +140,7 @@ module Spree
       end
 
       def set_up_shipping_category
-        if shipping_category = params[:product].delete(:shipping_category)
+        if (shipping_category = params[:product].delete(:shipping_category))
           id = Spree::ShippingCategory.find_or_create_by(name: shipping_category).id
           params[:product][:shipping_category_id] = id
         end

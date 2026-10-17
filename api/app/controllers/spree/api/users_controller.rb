@@ -5,6 +5,7 @@ class Spree::Api::UsersController < Spree::Api::BaseController
 
   def index
     user_scope = user_class.accessible_by(current_ability, :show)
+      .includes(bill_address: [:state, :country], ship_address: [:state, :country])
     if params[:ids]
       ids = params[:ids].split(",").flatten
       @users = user_scope.where(id: ids)
@@ -80,10 +81,16 @@ class Spree::Api::UsersController < Spree::Api::BaseController
   end
 
   def permitted_user_attributes
+    attributes = super
+
     if action_name == "create" || can?(:update_email, @user)
-      super | [:email]
-    else
-      super
+      attributes |= [:email]
     end
+
+    unless action_name == "create" || @user == current_api_user || can?(:update_password, @user)
+      attributes -= [:password, :password_confirmation]
+    end
+
+    attributes
   end
 end

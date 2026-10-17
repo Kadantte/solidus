@@ -4,11 +4,19 @@ module Spree
   module TestingSupport
     module CapybaraExt
       def click_icon(type)
-        find(".fa-#{type}").click
+        el = find(".fa-#{type}", visible: :all)
+        begin
+          el.click
+        rescue Selenium::WebDriver::Error::ElementClickInterceptedError
+          # When a floating element (eg. tooltips/overlays) intercepts the click,
+          # scroll the target into view and dispatch a click via JS to keep tests stable.
+          page.execute_script('arguments[0].scrollIntoView({block: "center"});', el.native)
+          page.execute_script("arguments[0].click();", el.native)
+        end
       end
 
       def eventually_fill_in(field, options = {})
-        expect(page).to have_css('#' + field)
+        expect(page).to have_css("#" + field)
         fill_in field, options
       end
 
@@ -42,7 +50,7 @@ module Spree
         }.merge(options)
         label = find_label_by_text(options[:from])
         within label.first(:xpath, ".//..") do
-          options[:from] = "##{find('.select2-container')['id']}"
+          options[:from] = "##{find(".select2-container")["id"]}"
         end
         select2_search_without_selection(options[:search], from: options[:from])
         select_select2_result(value) if options[:select]
@@ -65,14 +73,14 @@ module Spree
       # document. Can be used to 'escape' from within the context of another within
       # block.
       def within_entire_page(&block)
-        within(:xpath, '//body', &block)
+        within(:xpath, "//body", &block)
       end
 
       def select2(value, options)
         label = find_label_by_text(options[:from])
 
         within label.first(:xpath, ".//..") do
-          options[:from] = "##{find('.select2-container')['id']}"
+          options[:from] = "##{find(".select2-container")["id"]}"
         end
         targetted_select2(value, options)
       end
@@ -89,16 +97,16 @@ module Spree
 
       def targetted_select2(value, options)
         # find select2 element and click it
-        find(options[:from]).find('a').click
+        find(options[:from]).find("a").click
         select_select2_result(value)
       end
 
       def select_select2_result(value)
         # results are in a div appended to the end of the document
         within_entire_page do
-          expect(page).to have_selector('.select2-result-label', visible: true)
+          expect(page).to have_selector(".select2-result-label", visible: true)
           find("div.select2-result-label", text: /#{Regexp.escape(value)}/i, match: :prefer_exact).click
-          expect(page).not_to have_selector('.select2-result-label')
+          expect(page).not_to have_selector(".select2-result-label")
         end
       end
 
@@ -108,17 +116,7 @@ module Spree
         # We need to select labels which are not .select2-offscreen, as select2
         # makes a duplicate label with the same text, and we want to be sure to
         # find the original.
-        find('label:not(.select2-offscreen)', text: /#{Regexp.escape(text)}/i, match: :one)
-      end
-
-      def dialog(parent: 'body', **options)
-        within(parent) do
-          find('dialog', visible: :all, **options)
-        end
-      end
-
-      def turbo_frame_modal
-        dialog(parent: find('turbo-frame', visible: :all))
+        find("label:not(.select2-offscreen)", text: /#{Regexp.escape(text)}/i, match: :one)
       end
     end
   end
@@ -144,4 +142,4 @@ RSpec.configure do |c|
 end
 
 # A workaround for https://github.com/rspec/rspec-rails/issues/1897
-Capybara.server = :puma, { Silent: true }
+Capybara.server = :puma, {Silent: true}

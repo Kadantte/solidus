@@ -13,12 +13,13 @@ module Spree
         @order = order
       end
 
-      def call
+      def call(persist: true)
         all_items = line_items + shipments
+        ActiveRecord::Associations::Preloader.new(records: all_items, associations: :adjustments).call
         all_items.each do |item|
           promotion_adjustments = item.adjustments.select(&:promotion?)
 
-          promotion_adjustments.each { |adjustment| recalculate(adjustment) }
+          promotion_adjustments.each { |adjustment| recalculate(adjustment, persist:) }
           Spree::Config.promotions.promotion_chooser_class.new(promotion_adjustments).update
 
           item.promo_total = promotion_adjustments.select(&:eligible?).sum(&:amount)
@@ -28,14 +29,16 @@ module Spree
         # in #update_adjustment_total since they include the totals from the order's
         # line items and/or shipments.
         order_promotion_adjustments = order.adjustments.select(&:promotion?)
-        order_promotion_adjustments.each { |adjustment| recalculate(adjustment) }
+        order_promotion_adjustments.each { |adjustment| recalculate(adjustment, persist:) }
         Spree::Config.promotions.promotion_chooser_class.new(order_promotion_adjustments).update
 
         order.promo_total = all_items.sum(&:promo_total) +
-                            order_promotion_adjustments.
-                              select(&:eligible?).
-                              select(&:promotion?).
-                              sum(&:amount)
+          order_promotion_adjustments
+            .select(&:eligible?)
+            .select(&:promotion?)
+            .sum(&:amount)
+
+        order.save! if persist
         order
       end
 
@@ -52,7 +55,7 @@ module Spree
       # admin) or is closed, this is a noop.
       #
       # @return [BigDecimal] New amount of this adjustment
-      def recalculate(adjustment)
+      def recalculate(adjustment, persist:)
         if adjustment.finalized?
           return adjustment.amount
         end
@@ -68,10 +71,10 @@ module Spree
 
           adjustment.eligible = calculate_eligibility(adjustment)
 
-          # Persist only if changed
-          # This is only not a save! to avoid the extra queries to load the order
-          # (for validations) and to touch the adjustment.
-          adjustment.update_columns(eligible: adjustment.eligible, amount: adjustment.amount, updated_at: Time.current) if adjustment.changed?
+          if persist
+            adjustment.save!(validate: false)
+            adjustment.adjustable.line_item_actions.find_all(&:changed?).each(&:save!) if adjustment.adjustable.respond_to?(:line_item_actions)
+          end
         end
         adjustment.amount
       end

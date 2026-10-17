@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_dependency 'spree/calculator'
-
 # This is a calculator for line item adjustment actions. It accepts a line item
 # and calculates its weighted adjustment amount based on the value of the
 # preferred amount and the price of the other line items. More expensive line
@@ -10,7 +8,7 @@ require_dependency 'spree/calculator'
 module Spree
   class Calculator::DistributedAmount < Calculator
     preference :amount, :decimal, default: 0
-    preference :currency, :string, default: -> { Spree::Config[:currency] }
+    preference :currency, :string, default: -> { Spree::Config.currency }
 
     def compute_line_item(line_item)
       return 0 unless line_item

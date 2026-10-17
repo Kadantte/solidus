@@ -14,13 +14,18 @@ module Spree
         end
 
         def assert_not_found!
-          expect(json_response).to eq({ "error" => "The resource you were looking for could not be found." })
+          expect(json_response).to eq({"error" => "The resource you were looking for could not be found."})
           expect(response.status).to eq 404
         end
 
         def assert_unauthorized!
-          expect(json_response).to eq({ "error" => "You are not authorized to perform that action." })
+          expect(json_response).to eq({"error" => "You are not authorized to perform that action."})
           expect(response.status).to eq 401
+        end
+
+        def assert_forbidden!
+          expect(json_response).to eq({"error" => "You do not have permission to perform that action."})
+          expect(response.status).to eq 403
         end
 
         def stub_authentication!
@@ -47,7 +52,7 @@ module Spree
         end
 
         def upload_image(filename)
-          Rack::Test::UploadedFile.new(File.open(image(filename).path), 'image/jpeg')
+          Rack::Test::UploadedFile.new(File.open(image(filename).path), "image/jpeg")
         end
       end
     end

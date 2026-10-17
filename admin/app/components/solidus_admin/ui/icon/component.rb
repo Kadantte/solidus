@@ -15,17 +15,17 @@ class SolidusAdmin::UI::Icon::Component < SolidusAdmin::BaseComponent
     @attrs = attrs
 
     # Hide the icon from screen readers by default.
-    @attrs['aria-hidden'] = true unless @attrs.key?('aria-hidden')
+    @attrs["aria-hidden"] = true unless @attrs.key?("aria-hidden")
 
     # Default icons without style to 16x16, mostly useful in test snapshots.
-    @attrs['width'] = '16'
-    @attrs['height'] = '16'
+    @attrs["width"] = "16"
+    @attrs["height"] = "16"
   end
 
   def call
     # bypass the asset_host configuration to avoid CORS issues with CDNs:
     # https://github.com/solidusio/solidus/issues/5657
     href = asset_path("solidus_admin/remixicon.symbol.svg#ri-#{@name}", host: "")
-    tag.svg(tag.use("xlink:href": href), **@attrs)
+    tag.svg(tag.use("xlink:href": href, href:), **@attrs)
   end
 end

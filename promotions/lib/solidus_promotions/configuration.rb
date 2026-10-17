@@ -8,7 +8,21 @@ module SolidusPromotions
 
     class_name_attribute :order_adjuster_class, default: "SolidusPromotions::OrderAdjuster"
 
+    # Service object that checks whether a promotion is eligible for an order.
+    # @!attribute [rw] eligibility_checker_class
+    #   @return [String] Defaults to "SolidusPromotions::PromotionEligibilityChecker".
+    class_name_attribute :eligibility_checker_class, default: "SolidusPromotions::PromotionEligibilityChecker"
+
     class_name_attribute :coupon_code_handler_class, default: "SolidusPromotions::PromotionHandler::Coupon"
+
+    # The class used to normalize coupon codes before saving or lookup.
+    # By default, this normalizes codes to lowercase for case-insensitive matching.
+    # You can customize this by creating your own normalizer class or by overriding
+    # the existing SolidusPromotions::CouponCodeNormalizer class using a decorator.
+    # @!attribute [rw] coupon_code_normalizer_class
+    #   @return [String] The class used to normalize coupon codes.
+    #   Defaults to "SolidusPromotions::CouponCodeNormalizer".
+    class_name_attribute :coupon_code_normalizer_class, default: "SolidusPromotions::CouponCodeNormalizer"
 
     class_name_attribute :promotion_finder_class, default: "SolidusPromotions::PromotionFinder"
 
@@ -23,7 +37,37 @@ module SolidusPromotions
     # In case solidus_legacy_promotions is loaded, we need to define this.
     class_name_attribute :shipping_promotion_handler_class, default: "Spree::NullPromotionHandler"
 
-    add_class_set :order_conditions, default: [
+    def order_conditions
+      SolidusPromotions::Condition.applicable_to([Spree::Order])
+    end
+    deprecate order_conditions: :conditions, deprecator: Spree.deprecator
+
+    def order_conditions=(conditions)
+      conditions.each { self.conditions << _1 }
+    end
+    deprecate :order_conditions= => :conditions=, :deprecator => Spree.deprecator
+
+    def line_item_conditions
+      SolidusPromotions::Condition.applicable_to([Spree::LineItem])
+    end
+    deprecate line_item_conditions: :conditions, deprecator: Spree.deprecator
+
+    def line_item_conditions=(conditions)
+      conditions.each { self.conditions << _1 }
+    end
+    deprecate :line_item_conditions= => :conditions=, :deprecator => Spree.deprecator
+
+    def shipment_conditions
+      SolidusPromotions::Condition.applicable_to([Spree::Shipment])
+    end
+    deprecate shipment_conditions: :conditions, deprecator: Spree.deprecator
+
+    def shipment_conditions=(conditions)
+      conditions.each { self.conditions << _1 }
+    end
+    deprecate :shipment_conditions= => :conditions=, :deprecator => Spree.deprecator
+
+    add_class_set :conditions, default: [
       "SolidusPromotions::Conditions::FirstOrder",
       "SolidusPromotions::Conditions::FirstRepeatPurchaseSince",
       "SolidusPromotions::Conditions::ItemTotal",
@@ -32,34 +76,36 @@ module SolidusPromotions
       "SolidusPromotions::Conditions::NthOrder",
       "SolidusPromotions::Conditions::OneUsePerUser",
       "SolidusPromotions::Conditions::OptionValue",
+      "SolidusPromotions::Conditions::OrderOptionValue",
+      "SolidusPromotions::Conditions::OrderProduct",
       "SolidusPromotions::Conditions::Product",
       "SolidusPromotions::Conditions::Store",
       "SolidusPromotions::Conditions::Taxon",
+      "SolidusPromotions::Conditions::OrderTaxon",
       "SolidusPromotions::Conditions::UserLoggedIn",
       "SolidusPromotions::Conditions::UserRole",
-      "SolidusPromotions::Conditions::User"
-    ]
-
-    add_class_set :line_item_conditions, default: [
+      "SolidusPromotions::Conditions::User",
       "SolidusPromotions::Conditions::LineItemOptionValue",
       "SolidusPromotions::Conditions::LineItemProduct",
-      "SolidusPromotions::Conditions::LineItemTaxon"
-    ]
-    add_class_set :shipment_conditions, default: [
-      "SolidusPromotions::Conditions::ShippingMethod"
+      "SolidusPromotions::Conditions::LineItemTaxon",
+      "SolidusPromotions::Conditions::ShippingMethod",
+      "SolidusPromotions::Conditions::PriceProduct",
+      "SolidusPromotions::Conditions::PriceTaxon",
+      "SolidusPromotions::Conditions::PriceOptionValue",
+      "SolidusPromotions::Conditions::TaxonRevenue"
     ]
 
     add_class_set :benefits, default: [
       "SolidusPromotions::Benefits::AdjustLineItem",
       "SolidusPromotions::Benefits::AdjustLineItemQuantityGroups",
       "SolidusPromotions::Benefits::AdjustShipment",
-      "SolidusPromotions::Benefits::CreateDiscountedItem"
+      "SolidusPromotions::Benefits::CreateDiscountedItem",
+      "SolidusPromotions::Benefits::AdvertisePrice"
     ]
 
     add_nested_class_set :promotion_calculators, default: {
       "SolidusPromotions::Benefits::AdjustShipment" => [
         "SolidusPromotions::Calculators::FlatRate",
-        "SolidusPromotions::Calculators::FlexiRate",
         "SolidusPromotions::Calculators::Percent",
         "SolidusPromotions::Calculators::TieredFlatRate",
         "SolidusPromotions::Calculators::TieredPercent",
@@ -70,6 +116,7 @@ module SolidusPromotions
         "SolidusPromotions::Calculators::FlatRate",
         "SolidusPromotions::Calculators::FlexiRate",
         "SolidusPromotions::Calculators::Percent",
+        "SolidusPromotions::Calculators::PercentWithCap",
         "SolidusPromotions::Calculators::TieredFlatRate",
         "SolidusPromotions::Calculators::TieredPercent",
         "SolidusPromotions::Calculators::TieredPercentOnEligibleItemQuantity"
@@ -83,6 +130,11 @@ module SolidusPromotions
         "SolidusPromotions::Calculators::FlatRate",
         "SolidusPromotions::Calculators::Percent",
         "SolidusPromotions::Calculators::TieredPercentOnEligibleItemQuantity"
+      ],
+      "SolidusPromotions::Benefits::AdvertisePrice" => [
+        "SolidusPromotions::Calculators::Percent",
+        "SolidusPromotions::Calculators::FlatRate",
+        "SolidusPromotions::Calculators::FlexiRate"
       ]
     }
 
@@ -105,7 +157,6 @@ module SolidusPromotions
     preference :sync_order_promotions, :boolean, default: false
 
     preference :use_new_admin, :boolean, default: false
-
     def use_new_admin?
       SolidusSupport.admin_available? && preferred_use_new_admin
     end

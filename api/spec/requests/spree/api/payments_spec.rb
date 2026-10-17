@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require "spec_helper"
 
 module Spree::Api
-  describe 'Payments', type: :request do
+  describe "Payments", type: :request do
     let!(:order) { create(:order_with_line_items) }
     let!(:payment) { create(:payment, order:, amount: order.amount) }
     let!(:attributes) {
       [:id, :source_type, :source_id, :amount, :display_amount,
-       :payment_method_id, :state, :avs_response,
-       :created_at, :updated_at, :customer_metadata]
+        :payment_method_id, :state, :avs_response,
+        :created_at, :updated_at, :customer_metadata]
     }
 
     before do
@@ -29,7 +29,7 @@ module Spree::Api
 
         it "cannot view admin_metadata" do
           get spree.api_order_payments_path(order)
-          expect(json_response).not_to have_key('admin_metadata')
+          expect(json_response).not_to have_key("admin_metadata")
         end
 
         it "can learn how to create a new payment" do
@@ -45,25 +45,24 @@ module Spree::Api
           end
 
           it "can create a new payment" do
-            post spree.api_order_payments_path(order), params: { payment: { payment_method_id: Spree::PaymentMethod.first.id, amount: 50 } }
+            post spree.api_order_payments_path(order), params: {payment: {payment_method_id: Spree::PaymentMethod.first.id}}
             expect(response.status).to eq(201)
             expect(json_response).to have_attributes(attributes)
           end
 
           it "allows creating payment with customer metadata but not admin metadata" do
             post spree.api_order_payments_path(order),
-            params: {
-                      payment: {
-                        customer_metadata: { 'type' => 'credit card' },
-                        payment_method_id: Spree::PaymentMethod.first.id,
-                        amount: 50,
-                        source_attributes: { gateway_payment_profile_id: 1 }
-                      }
-            }
+              params: {
+                payment: {
+                  customer_metadata: {"type" => "credit card"},
+                  payment_method_id: Spree::PaymentMethod.first.id,
+                  source_attributes: {gateway_payment_profile_id: 1}
+                }
+              }
 
             expect(response.status).to eq(201)
-            expect(json_response['customer_metadata']).to eq({ "type" => "credit card" })
-            expect(json_response).not_to have_key('admin_metadata')
+            expect(json_response["customer_metadata"]).to eq({"type" => "credit card"})
+            expect(json_response).not_to have_key("admin_metadata")
           end
 
           context "disallowed payment method" do
@@ -71,7 +70,7 @@ module Spree::Api
               Spree::PaymentMethod.first.update!(available_to_users: false)
 
               expect {
-                post spree.api_order_payments_path(order), params: { payment: { payment_method_id: Spree::PaymentMethod.first.id, amount: 50 } }
+                post spree.api_order_payments_path(order), params: {payment: {payment_method_id: Spree::PaymentMethod.first.id}}
               }.not_to change { Spree::Payment.count }
               expect(response.status).to eq(404)
             end
@@ -81,18 +80,31 @@ module Spree::Api
         context "payment source is required" do
           context "no source is provided" do
             it "returns errors" do
-              post spree.api_order_payments_path(order), params: { payment: { payment_method_id: Spree::PaymentMethod.first.id, amount: 50 } }
+              post spree.api_order_payments_path(order), params: {payment: {payment_method_id: Spree::PaymentMethod.first.id}}
               expect(response.status).to eq(422)
-              expect(json_response['error']).to eq("Invalid resource. Please fix errors and try again.")
-              expect(json_response['errors']['source']).to eq(["can't be blank"])
+              expect(json_response["error"]).to eq("Invalid resource. Please fix errors and try again.")
+              expect(json_response["errors"]["source"]).to eq(["can't be blank"])
             end
           end
 
           context "source is provided" do
             it "can create a new payment" do
-              post spree.api_order_payments_path(order), params: { payment: { payment_method_id: Spree::PaymentMethod.first.id, amount: 50, source_attributes: { gateway_payment_profile_id: 1 } } }
+              post spree.api_order_payments_path(order), params: {payment: {payment_method_id: Spree::PaymentMethod.first.id, source_attributes: {gateway_payment_profile_id: 1}}}
               expect(response.status).to eq(201)
               expect(json_response).to have_attributes(attributes)
+            end
+
+            context "when the gateway profile id belongs to another user's card" do
+              before do
+                create(:credit_card, user: create(:user), gateway_payment_profile_id: "other-users-profile")
+              end
+
+              it "does not create a payment" do
+                expect {
+                  post spree.api_order_payments_path(order), params: {payment: {payment_method_id: Spree::PaymentMethod.first.id, source_attributes: {gateway_payment_profile_id: "other-users-profile"}}}
+                }.not_to change { Spree::Payment.count }
+                expect(response.status).to eq(404)
+              end
             end
           end
         end
@@ -103,13 +115,13 @@ module Spree::Api
         end
 
         it "cannot update a payment" do
-          put spree.api_order_payment_path(order, payment), params: { payment: { amount: 2.01 } }
-          assert_unauthorized!
+          put spree.api_order_payment_path(order, payment), params: {payment: {}}
+          assert_forbidden!
         end
 
         it "cannot authorize a payment" do
           put spree.authorize_api_order_payment_path(order, payment)
-          assert_unauthorized!
+          assert_forbidden!
         end
       end
 
@@ -120,11 +132,11 @@ module Spree::Api
 
         it "cannot view payments for somebody else's order" do
           get spree.api_order_payments_path(order)
-          assert_unauthorized!
+          assert_forbidden!
         end
 
         it "can view the payments for an order given the order token" do
-          get spree.api_order_payments_path(order), params: { order_token: order.guest_token }
+          get spree.api_order_payments_path(order), params: {order_token: order.guest_token}
           expect(json_response["payments"].first).to have_attributes(attributes)
         end
       end
@@ -147,15 +159,15 @@ module Spree::Api
           expect(json_response["count"]).to eq(2)
         end
 
-        it 'can control the page size through a parameter' do
-          get spree.api_order_payments_path(order), params: { per_page: 1 }
-          expect(json_response['count']).to eq(1)
-          expect(json_response['current_page']).to eq(1)
-          expect(json_response['pages']).to eq(2)
+        it "can control the page size through a parameter" do
+          get spree.api_order_payments_path(order), params: {per_page: 1}
+          expect(json_response["count"]).to eq(1)
+          expect(json_response["current_page"]).to eq(1)
+          expect(json_response["pages"]).to eq(2)
         end
 
         it "can query the results through a parameter" do
-          get spree.api_order_payments_path(order), params: { q: { id_eq: @payment.id } }
+          get spree.api_order_payments_path(order), params: {q: {id_eq: @payment.id}}
           expect(json_response["payments"].count).to eq(1)
           expect(json_response["count"]).to eq(1)
           expect(json_response["current_page"]).to eq(1)
@@ -166,46 +178,46 @@ module Spree::Api
       context "for a given payment" do
         context "updating" do
           it "can update" do
-            payment.update(state: 'pending')
-            put spree.api_order_payment_path(order, payment), params: { payment: { amount: 2.01 } }
+            payment.update(state: "pending")
+            put spree.api_order_payment_path(order, payment), params: {payment: {amount: 2.01}}
             expect(response.status).to eq(200)
             expect(payment.reload.amount).to eq(2.01)
           end
 
           context "update fails" do
             it "returns a 422 status when the amount is invalid" do
-              payment.update(state: 'pending')
-              put spree.api_order_payment_path(order, payment), params: { payment: { amount: 'invalid' } }
+              payment.update(state: "pending")
+              put spree.api_order_payment_path(order, payment), params: {payment: {amount: "invalid"}}
               expect(response.status).to eq(422)
               expect(json_response["error"]).to eq("Invalid resource. Please fix errors and try again.")
               expect(payment.reload.state).to eq("pending")
             end
 
             it "returns a 403 status when the payment is not pending" do
-              payment.update(state: 'completed')
-              put spree.api_order_payment_path(order, payment), params: { payment: { amount: 2.01 } }
+              payment.update(state: "completed")
+              put spree.api_order_payment_path(order, payment), params: {payment: {amount: 2.01}}
               expect(response.status).to eq(403)
               expect(json_response["error"]).to eq("This payment cannot be updated because it is completed.")
             end
 
             it "can update a payment admin_metadata" do
-              payment.update(state: 'pending')
+              payment.update(state: "pending")
 
               put spree.api_order_payment_path(order, payment),
-              params: {
-                payment: {
-                  amount: 2.01,
-                  admin_metadata: { 'order_number' => 'PN345678' }
+                params: {
+                  payment: {
+                    amount: 2.01,
+                    admin_metadata: {"order_number" => "PN345678"}
+                  }
                 }
-              }
 
               expect(response.status).to eq(200)
-              expect(json_response["admin_metadata"]).to eq({ 'order_number' => 'PN345678' })
+              expect(json_response["admin_metadata"]).to eq({"order_number" => "PN345678"})
             end
 
             it "can view admin_metadata" do
               get spree.api_order_payments_path(order)
-              expect(json_response["payments"].first).to have_key('admin_metadata')
+              expect(json_response["payments"].first).to have_key("admin_metadata")
             end
           end
         end

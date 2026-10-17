@@ -2,6 +2,10 @@
 
 module Spree
   class ApiConfiguration < Preferences::Configuration
+    # @!attribute [rw] allow_arbitrary_state_in_api
+    #  @return [Boolean] When true, the API will allow arbitrary state transitions on orders (default: +false+)
+    preference :allow_arbitrary_state_in_checkout, :boolean, default: false
+
     preference :requires_authentication, :boolean, default: true
 
     preference :product_attributes, :array, default: [
@@ -44,13 +48,13 @@ module Spree
     # Spree::Api::Config.metadata_api_parameters contains the models
     # to which the admin_metadata attribute is added
     preference :metadata_api_parameters, :array, default: [
-      [:order, 'Spree::Order'],
-      [:customer_return, 'Spree::CustomerReturn'],
-      [:payment, 'Spree::Payment'],
-      [:return_authorization, 'Spree::ReturnAuthorization'],
-      [:shipment, 'Spree::Shipment'],
-      [:user, 'Spree.user_class'],
-      [:line_item, 'Spree::LineItem']
+      [:order, "Spree::Order"],
+      [:customer_return, "Spree::CustomerReturn"],
+      [:payment, "Spree::Payment"],
+      [:return_authorization, "Spree::ReturnAuthorization"],
+      [:shipment, "Spree::Shipment"],
+      [:user, "Spree.user_class"],
+      [:line_item, "Spree::LineItem"]
     ]
 
     # Spree::Api::Config.metadata_permit_parameters contains the models
@@ -144,7 +148,7 @@ module Spree
     end
     alias_method :preferred_promotion_attributes=, :promotion_attributes=
     promotion_attributes_deprecation_message = "Spree::ApiConfiguration#promotion_attributes= is deprecated. Please use Spree::Config.promotions.promotion_api_attributes= instead."
-    deprecate "promotion_attributes=" => promotion_attributes_deprecation_message, deprecator: Spree.deprecator
+    deprecate "promotion_attributes=" => promotion_attributes_deprecation_message, :deprecator => Spree.deprecator
 
     preference :store_attributes, :array, default: [
       :id, :name, :url, :meta_description, :meta_keywords, :seo_title,

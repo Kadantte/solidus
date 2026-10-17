@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Spree::Store, type: :model do
   it { is_expected.to respond_to(:cart_tax_country_iso) }
@@ -31,10 +31,10 @@ RSpec.describe Spree::Store, type: :model do
     end
   end
 
-  describe '#default_cart_tax_location' do
+  describe "#default_cart_tax_location" do
     subject { described_class.new(cart_tax_country_iso:) }
     context "when there is no cart_tax_country_iso set" do
-      let(:cart_tax_country_iso) { '' }
+      let(:cart_tax_country_iso) { "" }
       it "responds with an empty default_cart_tax_location" do
         expect(subject.default_cart_tax_location).to be_empty
       end
@@ -50,11 +50,11 @@ RSpec.describe Spree::Store, type: :model do
     end
   end
 
-  describe '#available_locales' do
+  describe "#available_locales" do
     let(:store) { described_class.new(available_locales: locales) }
     subject { store.available_locales }
 
-    context 'with available_locales: []' do
+    context "with available_locales: []" do
       let(:locales) { [] }
 
       it "returns all available locales" do
@@ -66,7 +66,7 @@ RSpec.describe Spree::Store, type: :model do
       end
     end
 
-    context 'with available_locales: [:en]' do
+    context "with available_locales: [:en]" do
       let(:locales) { [:en] }
 
       it "returns [:en]" do
@@ -78,7 +78,7 @@ RSpec.describe Spree::Store, type: :model do
       end
     end
 
-    context 'with available_locales: [:en, :fr]' do
+    context "with available_locales: [:en, :fr]" do
       let(:locales) { [:en, :fr] }
 
       it "returns [:fr]" do
@@ -90,7 +90,7 @@ RSpec.describe Spree::Store, type: :model do
       end
     end
 
-    context 'with available_locales: [:fr]' do
+    context "with available_locales: [:fr]" do
       let(:locales) { [:fr] }
 
       it "returns [:fr]" do
@@ -107,16 +107,16 @@ RSpec.describe Spree::Store, type: :model do
     end
   end
 
-  describe 'enum reverse_charge_status' do
-    it 'defines the expected enum values' do
+  describe "enum reverse_charge_status" do
+    it "defines the expected enum values" do
       expect(Spree::Store.reverse_charge_statuses).to eq({
-        'disabled' => 0,
-        'enabled' => 1,
-        'not_validated' => 2
+        "disabled" => 0,
+        "enabled" => 1,
+        "not_validated" => 2
       })
     end
 
-    it 'allows valid values' do
+    it "allows valid values" do
       store = build(:store)
       # Updates the reverse_charge_status to "not_validated"
       expect(store).to be_valid
@@ -132,8 +132,74 @@ RSpec.describe Spree::Store, type: :model do
       expect(store).to be_valid
     end
 
-    it 'raises an error for invalid values' do
+    it "raises an error for invalid values" do
       expect { Spree::Store.new(reverse_charge_status: :invalid_status) }.to raise_error(ArgumentError)
+    end
+  end
+
+  describe "#address" do
+    it "is optional" do
+      expect(build(:store, address: nil)).to be_valid
+    end
+
+    it "can be assigned" do
+      store = create(:store, :with_address)
+      expect(store.reload.address).to be_a(Spree::Address)
+    end
+  end
+
+  describe "#address_attributes=" do
+    let(:address_attributes) { attributes_for(:address).merge(country_id: create(:country, states_required: false).id) }
+
+    it "creates an address" do
+      store = create(:store, address_attributes:)
+      expect(store.reload.address).to have_attributes(address_attributes.slice(:name, :address1, :city))
+    end
+
+    it "invalidates the store if the address is invalid" do
+      store = build(:store, address_attributes: address_attributes.merge(city: nil))
+      expect(store).not_to be_valid
+      expect(store.errors).to include(:address)
+    end
+
+    it "does not modify the existing address on change" do
+      store = create(:store, :with_address)
+      original_address = store.address
+
+      store.update!(address_attributes: {city: "New City"})
+
+      expect(store.reload.address).not_to eq(original_address)
+      expect(store.address.city).to eq("New City")
+      expect(original_address.reload.city).not_to eq("New City")
+    end
+
+    it "keeps the existing address if nothing changed" do
+      store = create(:store, :with_address)
+      original_address = store.address
+
+      store.update!(address_attributes: {city: original_address.city})
+
+      expect(store.reload.address).to eq(original_address)
+    end
+  end
+
+  describe "#validate_not_default" do
+    context "when deleting a default store" do
+      it "prevents deletion" do
+        store = create(:store, default: true)
+        expect(store.destroy).to eq false
+        expect(store.errors.full_messages.join).to match(/Cannot destroy/)
+        expect { store.reload }.not_to raise_error
+      end
+    end
+
+    context "when deleting a non-default store" do
+      it "allows deletion" do
+        create(:store, default: true)
+        store = create(:store, default: false)
+        expect(store.destroy).to be_truthy
+        expect { store.reload }.to raise_error(ActiveRecord::RecordNotFound)
+      end
     end
   end
 end

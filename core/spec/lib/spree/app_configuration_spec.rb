@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Spree::AppConfiguration do
+  before do
+    stub_const("DummyClass", Class.new)
+  end
+
   let(:prefs) { Spree::Config }
 
   around do |example|
@@ -44,8 +48,106 @@ RSpec.describe Spree::AppConfiguration do
     expect(prefs.variant_price_selector_class).to eq Spree::Variant::PriceSelector
   end
 
+  it "uses state change tracker class by default" do
+    expect(prefs.state_change_tracking_class).to eq Spree::StateChangeTracker
+  end
+
   it "uses core's promotion configuration class by default" do
     expect(prefs.promotions).to be_a Spree::Core::NullPromotionConfiguration
+  end
+
+  it "uses mergeable orders finder class by default" do
+    expect(prefs.mergeable_orders_finder_class).to eq Spree::MergeableOrdersFinder
+  end
+
+  context "deprecated allow_return_item_amount_editing" do
+    it "warns on assignment" do
+      expect(Spree.deprecator).to receive(:warn).with(/allow_return_item_amount_editing/, any_args)
+
+      prefs.allow_return_item_amount_editing = true
+    end
+
+    it "still stores the value" do
+      Spree.deprecator.silence do
+        prefs.allow_return_item_amount_editing = true
+        expect(prefs.allow_return_item_amount_editing).to eq true
+      end
+    end
+  end
+
+  context "deprecated alternative_billing_phone" do
+    it "warns on assignment" do
+      expect(Spree.deprecator).to receive(:warn).with(/alternative_billing_phone/, any_args)
+
+      prefs.alternative_billing_phone = true
+    end
+
+    it "still stores the value" do
+      Spree.deprecator.silence do
+        prefs.alternative_billing_phone = true
+        expect(prefs.alternative_billing_phone).to eq true
+      end
+    end
+  end
+
+  context "deprecated auto_capture_exchanges" do
+    it "warns on assignment" do
+      expect(Spree.deprecator).to receive(:warn).with(/auto_capture_exchanges/, any_args)
+
+      prefs.auto_capture_exchanges = true
+    end
+
+    it "still stores the value" do
+      Spree.deprecator.silence do
+        prefs.auto_capture_exchanges = true
+        expect(prefs.auto_capture_exchanges).to eq true
+      end
+    end
+  end
+
+  context "deprecated customer_returns_per_page" do
+    it "warns on assignment" do
+      expect(Spree.deprecator).to receive(:warn).with(/customer_returns_per_page/, any_args)
+
+      prefs.customer_returns_per_page = 20
+    end
+
+    it "still stores the value" do
+      Spree.deprecator.silence do
+        prefs.customer_returns_per_page = 20
+        expect(prefs.customer_returns_per_page).to eq 20
+      end
+    end
+  end
+
+  context "deprecated order_capturing_time_window" do
+    it "warns on assignment" do
+      expect(Spree.deprecator).to receive(:warn).with(/order_capturing_time_window/, any_args)
+
+      prefs.order_capturing_time_window = 30
+    end
+
+    it "still stores the value" do
+      Spree.deprecator.silence do
+        prefs.order_capturing_time_window = 30
+        expect(prefs.order_capturing_time_window).to eq 30
+      end
+    end
+  end
+
+  context "deprecated allocator_class" do
+    it "warns on assignment" do
+      expect(Spree.deprecator).to receive(:warn).with(/allocator_class/, any_args)
+
+      prefs.allocator_class = "DummyClass"
+    end
+
+    it "still stores the value" do
+      Spree.deprecator.silence do
+        prefs.allocator_class = "DummyClass"
+        expect(prefs.allocator_class).to eq DummyClass
+      end
+    end
   end
 
   context "deprecated preferences" do
@@ -85,21 +187,21 @@ RSpec.describe Spree::AppConfiguration do
       end
     end
 
-    context '.calculators' do
+    context ".calculators" do
       subject(:calculators) { environment.calculators }
       it { is_expected.to be_a Spree::Core::Environment::Calculators }
 
-      context '.calculators.promotion_actions_create_adjustments' do
+      context ".calculators.promotion_actions_create_adjustments" do
         subject(:preferences_set) { calculators.promotion_actions_create_adjustments }
         it_should_behave_like "working preferences set"
       end
 
-      context '.calculators.promotion_actions_create_item_adjustments' do
+      context ".calculators.promotion_actions_create_item_adjustments" do
         subject(:preferences_set) { calculators.promotion_actions_create_item_adjustments }
         it_should_behave_like "working preferences set"
       end
 
-      context '.calculators.promotion_actions_create_quantity_adjustments' do
+      context ".calculators.promotion_actions_create_quantity_adjustments" do
         subject(:preferences_set) { calculators.promotion_actions_create_quantity_adjustments }
         it_should_behave_like "working preferences set"
       end
@@ -110,60 +212,58 @@ RSpec.describe Spree::AppConfiguration do
     expect(prefs.pricing_options_class).to eq Spree::Variant::PriceSelector.pricing_options_class
   end
 
-  describe '#stock' do
+  describe "#stock" do
     subject { prefs.stock }
     it { is_expected.to be_a Spree::Core::StockConfiguration }
   end
 
-  describe '#promotions' do
+  describe "#promotions" do
     subject { prefs.promotions }
     it { is_expected.to be_a Spree::Core::NullPromotionConfiguration }
   end
 
-  describe '@default_country_iso_code' do
-    it 'is the USA by default' do
+  describe "@default_country_iso_code" do
+    it "is the USA by default" do
       expect(prefs[:default_country_iso]).to eq("US")
     end
   end
 
-  describe '@admin_vat_country_iso' do
-    it 'is `nil` by default' do
+  describe "@admin_vat_country_iso" do
+    it "is `nil` by default" do
       expect(prefs[:admin_vat_country_iso]).to eq(nil)
     end
   end
 
-  describe '#environment' do
-    class DummyClass; end;
-
+  describe "#environment" do
     subject(:environment) { prefs.environment }
     it { is_expected.to be_a Spree::Core::Environment }
 
-    context '.payment_methods' do
+    context ".payment_methods" do
       subject(:preferences_set) { environment.payment_methods }
       it_should_behave_like "working preferences set"
     end
 
-    context '.stock_splitters' do
+    context ".stock_splitters" do
       subject(:preferences_set) { environment.stock_splitters }
       it_should_behave_like "working preferences set"
     end
 
-    context '.calculators' do
+    context ".calculators" do
       subject(:calculators) { environment.calculators }
       it { is_expected.to be_a Spree::Core::Environment::Calculators }
 
-      context '.calculators.shipping_methods' do
+      context ".calculators.shipping_methods" do
         subject(:preferences_set) { calculators.shipping_methods }
         it_should_behave_like "working preferences set"
       end
 
-      context '.calculators.tax_rates' do
+      context ".calculators.tax_rates" do
         subject(:preferences_set) { calculators.tax_rates }
         it_should_behave_like "working preferences set"
       end
     end
 
-    context '.promotions' do
+    context ".promotions" do
       around do |example|
         Spree.deprecator.silence do
           example.run
@@ -174,17 +274,17 @@ RSpec.describe Spree::AppConfiguration do
 
       it { is_expected.to be_a Spree::Core::Environment::Promotions }
 
-      context '.promotions.rules' do
+      context ".promotions.rules" do
         subject(:preferences_set) { promotions.rules }
         it_should_behave_like "working preferences set"
       end
 
-      context '.promotions.actions' do
+      context ".promotions.actions" do
         subject(:preferences_set) { promotions.actions }
         it_should_behave_like "working preferences set"
       end
 
-      context '.promotions.shipping_actions' do
+      context ".promotions.shipping_actions" do
         subject(:preferences_set) { promotions.shipping_actions }
         it_should_behave_like "working preferences set"
       end
@@ -217,27 +317,61 @@ RSpec.describe Spree::AppConfiguration do
     it { is_expected.to be_empty }
   end
 
-  it 'has a default admin VAT location with nil values by default' do
+  it "has a default admin VAT location with nil values by default" do
     expect(prefs.admin_vat_location).to eq(Spree::Tax::TaxLocation.new)
     expect(prefs.admin_vat_location.state_id).to eq(nil)
     expect(prefs.admin_vat_location.country_id).to eq(nil)
   end
 
-  describe '@meta_data_max_keys' do
-    it 'is 6 by default' do
+  describe "@meta_data_max_keys" do
+    it "is 6 by default" do
       expect(prefs[:meta_data_max_keys]).to eq(6)
     end
   end
 
-  describe '@meta_data_max_key_length' do
-    it 'is 16 by default' do
+  describe "@meta_data_max_key_length" do
+    it "is 16 by default" do
       expect(prefs[:meta_data_max_key_length]).to eq(16)
     end
   end
 
-  describe '@meta_data_max_value_length' do
-    it 'is 256 by default' do
+  describe "@meta_data_max_value_length" do
+    it "is 256 by default" do
       expect(prefs[:meta_data_max_value_length]).to eq(256)
+    end
+  end
+
+  describe "#recalculate_cart_prices" do
+    subject { prefs[:recalculate_cart_prices] }
+
+    it { is_expected.to be false }
+
+    context "if solidus version is 5.0" do
+      before do
+        prefs.load_defaults "5.0"
+      end
+
+      it { is_expected.to be true }
+    end
+  end
+
+  describe "#refundable_payment_states" do
+    subject { prefs[:refundable_payment_states] }
+
+    it { is_expected.to eq %w[completed pending] }
+  end
+
+  describe "#require_refundable_payment_state" do
+    subject { prefs[:require_refundable_payment_state] }
+
+    it { is_expected.to be false }
+
+    context "if solidus version is 5.0" do
+      before do
+        prefs.load_defaults "5.0"
+      end
+
+      it { is_expected.to be true }
     end
   end
 end

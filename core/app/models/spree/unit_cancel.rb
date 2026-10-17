@@ -4,8 +4,8 @@
 # The reason specifies why it was canceled.
 # This class should encapsulate logic related to canceling inventory after order complete
 class Spree::UnitCancel < Spree::Base
-  SHORT_SHIP = 'Short Ship'
-  DEFAULT_REASON = 'Cancel'
+  SHORT_SHIP = "Short Ship"
+  DEFAULT_REASON = "Cancel"
 
   belongs_to :inventory_unit, optional: true
   has_one :adjustment, as: :source, dependent: :destroy
@@ -13,21 +13,16 @@ class Spree::UnitCancel < Spree::Base
   validates :inventory_unit, presence: true
 
   # Creates necessary cancel adjustments for the line item.
-  def adjust!
+  def adjust!(line_item = inventory_unit.line_item)
     raise "Adjustment is already created" if adjustment
 
-    amount = compute_amount(inventory_unit.line_item)
-
-    self.adjustment = inventory_unit.line_item.adjustments.create!(
+    self.adjustment = line_item.adjustments.create!(
       source: self,
-      amount:,
-      order: inventory_unit.order,
-      label: "#{I18n.t('spree.cancellation')} - #{reason}",
+      amount: compute_amount(line_item),
+      order: line_item.order,
+      label: "#{I18n.t("spree.cancellation")} - #{reason}",
       finalized: true
     )
-
-    inventory_unit.line_item.order.recalculate
-    adjustment
   end
 
   # This method is used by Adjustment#update to recalculate the cost.
@@ -47,6 +42,6 @@ class Spree::UnitCancel < Spree::Base
   end
 
   def quantity_of_line_item(line_item)
-    BigDecimal(line_item.inventory_units.not_canceled.reject(&:original_return_item).size)
+    BigDecimal(line_item.inventory_units.not_canceled.count { |element| !element.original_return_item })
   end
 end

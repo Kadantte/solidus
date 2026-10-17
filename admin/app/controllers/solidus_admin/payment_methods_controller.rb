@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 module SolidusAdmin
-  class PaymentMethodsController < SolidusAdmin::BaseController
-    include SolidusAdmin::ControllerHelpers::Search
+  class PaymentMethodsController < SolidusAdmin::ResourcesController
     include SolidusAdmin::Moveable
+
+    before_action :initialize_resource, only: [:new]
+    before_action :validate_type, only: [:create, :update]
 
     search_scope(:all)
     search_scope(:active, default: true, &:active)
@@ -11,26 +13,35 @@ module SolidusAdmin
     search_scope(:storefront, &:available_to_users)
     search_scope(:admin, &:available_to_admin)
 
-    def index
-      payment_methods = apply_search_to(
-        Spree::PaymentMethod.ordered_by_position,
-        param: :q,
-      )
+    private
 
-      set_page_and_extract_portion_from(payment_methods)
+    def resource_class = Spree::PaymentMethod
 
-      respond_to do |format|
-        format.html { render component('payment_methods/index').new(page: @page) }
-      end
+    def resources_collection = resource_class.all
+
+    def resources_sorting_options = {position: :asc}
+
+    def permitted_resource_params
+      params.require(:payment_method).permit(:name, :description, :auto_capture, :type, :preference_source,
+        :preferred_server, :preferred_test_mode, :active, :available_to_admin, :available_to_users, store_ids: [])
     end
 
-    def destroy
-      @payment_methods = Spree::PaymentMethod.where(id: params[:id])
+    def initialize_resource
+      @resource = resource_class.new(stores: [Spree::Store.default])
+    end
 
-      Spree::PaymentMethod.transaction { @payment_methods.destroy_all }
+    def available_types
+      Rails.application.config.spree.payment_methods.map(&:name)
+    end
 
-      flash[:notice] = t('.success')
-      redirect_back_or_to payment_methods_path, status: :see_other
+    def validate_type
+      unless available_types.include?(params[:payment_method][:type])
+        @resource ||= resource_class.new(permitted_resource_params.except(:type))
+        @resource.errors.add(:type, :invalid)
+
+        page_component = @resource.persisted? ? edit_component.new(@resource) : new_component.new(@resource)
+        render_resource_form_with_errors(page_component)
+      end
     end
   end
 end

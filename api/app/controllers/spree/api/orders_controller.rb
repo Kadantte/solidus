@@ -11,6 +11,12 @@ module Spree
 
       class_attribute :admin_payment_attributes
       self.admin_payment_attributes = [:payment_method, :amount, :state, source: {}]
+      msg = "`Spree::Api::OrdersController.admin_payment_attributes` is deprecated."
+      deprecate(
+        admin_payment_attributes: msg,
+        "admin_payment_attributes=": msg,
+        deprecator: Spree.deprecator
+      )
 
       before_action :find_order, except: [:create, :mine, :current, :index]
       around_action :lock_order, except: [:create, :mine, :current, :index, :show]
@@ -58,7 +64,7 @@ module Spree
       def index
         authorize! :admin, Order
         orders_includes = [
-          { user: :store_credits },
+          {user: :store_credits},
           :line_items,
           :valid_store_credit_payments
         ]
@@ -79,11 +85,13 @@ module Spree
       def update
         authorize! :update, @order, order_token
 
+        user_id = params[:order][:user_id]
+        if can?(:admin, @order) && user_id
+          user = Spree.user_class.accessible_by(current_ability, :show).find(user_id)
+        end
+
         if @order.contents.update_cart(order_params)
-          user_id = params[:order][:user_id]
-          if can?(:admin, @order) && user_id
-            @order.associate_user!(Spree.user_class.find(user_id))
-          end
+          @order.associate_user!(user) if user
           respond_with(@order, default_template: :show)
         else
           invalid_resource!(@order)
@@ -91,8 +99,8 @@ module Spree
       end
 
       def current
-        if current_api_user && @order = current_api_user.last_incomplete_spree_order(store: current_store)
-          respond_with(@order, default_template: :show, locals: { root_object: @order })
+        if current_api_user && (@order = current_api_user.last_incomplete_spree_order(store: current_store))
+          respond_with(@order, default_template: :show, locals: {root_object: @order})
         else
           head :no_content
         end
@@ -122,7 +130,7 @@ module Spree
       def prevent_customer_metadata_update
         return unless @order&.completed? && cannot?(:admin, Spree::Order)
 
-        params[:order].delete(:customer_metadata) if params[:order]
+        params[:order]&.delete(:customer_metadata)
       end
 
       def normalize_params
@@ -142,14 +150,32 @@ module Spree
       # @api public
       def determine_order_user
         if order_params[:user_id].present?
-          Spree.user_class.find(order_params[:user_id])
+          Spree.user_class.accessible_by(current_ability, :show).find(order_params[:user_id])
         else
           current_api_user
         end
       end
 
       def permitted_order_attributes
-        can?(:admin, Spree::Order) ? (super + admin_order_attributes) : super
+        if can?(:admin, Spree::Order)
+          super + admin_order_attributes
+        else
+          # We need to remove the `:amount` attribute from payments_attributes
+          # for non-admin users. Unfortunately, order_attributes uses the
+          # checkout_payment_attributes instead of the payment_attributes, which
+          # needs to be able to set the amount.
+          #
+          # We're doing a deep_dup here to avoid modifying the original
+          # permitted attributes, which could have unintended side effects.
+          order_attributes = super.deep_dup
+
+          payments_attributes = order_attributes.find do |attribute|
+            attribute.is_a?(Hash) && attribute.has_key?(:payments_attributes)
+          end
+          payments_attributes[:payments_attributes] -= [:amount]
+
+          order_attributes
+        end
       end
 
       def permitted_shipment_attributes
@@ -161,6 +187,12 @@ module Spree
       end
 
       def permitted_payment_attributes
+        Spree.deprecator.warn(
+          "`Spree::Api::OrdersController#permitted_payment_attributes` is deprecated. " \
+          "This method was never actually used in this controller because " \
+          "permitted_order_attributes uses the permitted_checkout_payment_attributes " \
+          "method to determine the permitted attributes for payments."
+        )
         if can?(:admin, Spree::Payment)
           super + admin_payment_attributes
         else
@@ -169,13 +201,13 @@ module Spree
       end
 
       def find_order(_lock = false)
-        @order = Spree::Order.
-          includes(line_items: [:adjustments, { variant: :images }],
-                   payments: :payment_method,
-                   shipments: {
-                     shipping_rates: { shipping_method: :zones, taxes: :tax_rate }
-                   }).
-          find_by!(number: params[:id])
+        @order = Spree::Order
+          .includes(line_items: [:adjustments, {variant: :images}],
+            payments: :payment_method,
+            shipments: {
+              shipping_rates: {shipping_method: :zones, taxes: :tax_rate}
+            })
+          .find_by!(number: params[:id])
       end
 
       def order_id

@@ -13,27 +13,9 @@ RSpec.describe SolidusPromotions::Conditions::Taxon, type: :model do
   let(:taxon_one) { create :taxon, name: "first" }
   let(:taxon_two) { create :taxon, name: "second" }
 
-  it { is_expected.to have_many(:taxons) }
+  it_behaves_like "a taxon condition"
 
   it { is_expected.to be_updateable }
-
-  describe "taxon_ids_string=" do
-    subject { condition.assign_attributes("taxon_ids_string" => taxon_two.id.to_s) }
-
-    let(:condition) { promotion_benefit.conditions.build(type: described_class.to_s) }
-
-    it "creates a valid condition with a taxon" do
-      subject
-      expect(condition).to be_valid
-      condition.save!
-      expect(condition.reload.taxons).to include(taxon_two)
-    end
-  end
-
-  describe "#preload_relations" do
-    subject { condition.preload_relations }
-    it { is_expected.to eq([:taxons]) }
-  end
 
   describe "#eligible?(order)" do
     context "with any match policy" do
@@ -161,42 +143,12 @@ RSpec.describe SolidusPromotions::Conditions::Taxon, type: :model do
         end
       end
     end
-
-    context "with an invalid match policy" do
-      before do
-        order.products.first.taxons << taxon_one
-        condition.taxons << taxon_one
-        condition.preferred_match_policy = "invalid"
-        condition.save!(validate: false)
-      end
-
-      it "raises" do
-        expect {
-          condition.eligible?(order)
-        }.to raise_error('unexpected match policy: "invalid"')
-      end
-    end
   end
 
   describe "#eligible?(line_item)" do
     let(:line_item) { order.line_items.first! }
     let(:order) { create :order_with_line_items }
     let(:taxon) { create :taxon, name: "first" }
-
-    context "with an invalid match policy" do
-      before do
-        condition.preferred_match_policy = "invalid"
-        condition.save!(validate: false)
-        line_item.product.taxons << taxon
-        condition.taxons << taxon
-      end
-
-      it "raises" do
-        expect {
-          condition.eligible?(line_item)
-        }.to raise_error('unexpected match policy: "invalid"')
-      end
-    end
 
     context "when a product has a taxon of a taxon condition" do
       before do
@@ -233,6 +185,69 @@ RSpec.describe SolidusPromotions::Conditions::Taxon, type: :model do
       it "is not eligible" do
         expect(condition).not_to be_eligible(line_item)
       end
+    end
+  end
+
+  describe "#eligible?(price)" do
+    let(:price) { create(:price, variant:) }
+    let(:variant) { create(:variant, product:) }
+    let(:product) { create(:product, taxons: [product_taxon]) }
+    let(:taxon) { create :taxon, name: "first" }
+
+    context "when a product has a taxon of a taxon condition" do
+      let(:product_taxon) { taxon }
+
+      before do
+        condition.taxons << taxon
+        condition.save!
+      end
+
+      it "is eligible" do
+        expect(condition).to be_eligible(price)
+      end
+    end
+
+    context "when a product has a taxon child of a taxon condition" do
+      let(:product_taxon) { taxon_two }
+
+      before do
+        taxon.children << taxon_two
+        condition.taxons << taxon
+        condition.save!
+      end
+
+      it "is eligible" do
+        expect(condition).to be_eligible(price)
+      end
+    end
+
+    context "when a product does not have taxon or child taxon of a taxon condition" do
+      let(:product_taxon) { taxon_two }
+      before do
+        condition.taxons << taxon
+        condition.save!
+      end
+
+      it "is not eligible" do
+        expect(condition).not_to be_eligible(price)
+      end
+    end
+  end
+
+  describe "performance" do
+    let(:product_one) { create(:product, taxons: [taxon_one]) }
+    let(:product_two) { create(:product, taxons: [taxon_two]) }
+    let!(:promotion) { create(:solidus_promotion, :with_adjustable_benefit, apply_automatically: true) }
+    let(:benefit) { promotion.benefits.first }
+    let!(:condition) { described_class.create!(taxons: [taxon_one, taxon_two], benefit:) }
+    let!(:order) { create(:order_with_line_items, line_items_attributes: [{variant: product_one.master}, {variant: product_two.master}]) }
+
+    subject { order.recalculate }
+
+    it "only loads the taxon IDs with children once" do
+      expect_any_instance_of(SolidusPromotions::Conditions::TaxonCondition).to receive(:load_taxon_ids_with_children).once { [[taxon_one.id], [taxon_two.id]] }
+
+      subject
     end
   end
 end

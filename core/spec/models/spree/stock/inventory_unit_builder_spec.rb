@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 module Spree
   module Stock
@@ -28,24 +28,34 @@ module Spree
         it "builds the inventory units as pending" do
           expect(subject.units.map(&:pending).uniq).to eq [true]
         end
+
+        context "with multiple line items" do
+          let(:order) { create(:order_with_line_items, line_items_count: 3) }
+
+          before { order.reload }
+
+          it "loads line item variants in a single query" do
+            expect { described_class.new(order).units }.to make_database_queries(matching: /from .spree_variants..*\bid. IN \(/im, count: 1)
+          end
+        end
       end
 
-      describe '#missing_units_for_line_item' do
-        context 'when all inventory units are missing' do
-          it 'builds all inventory units for the line item' do
+      describe "#missing_units_for_line_item" do
+        context "when all inventory units are missing" do
+          it "builds all inventory units for the line item" do
             units = subject.missing_units_for_line_item(line_item_2)
             expect(units.size).to be 2
             expect(units).to be_all { |unit| unit.line_item == line_item_2 }
           end
         end
 
-        context 'when some inventory units are already present' do
+        context "when some inventory units are already present" do
           before do
             line_item_2.inventory_units << build(:inventory_unit, line_item: line_item_2)
             line_item_2.save!
           end
 
-          it 'builds only the missing inventory unit' do
+          it "builds only the missing inventory unit" do
             units = subject.missing_units_for_line_item(line_item_2)
             expect(units.size).to be 1
             expect(units.first.line_item).to eql line_item_2

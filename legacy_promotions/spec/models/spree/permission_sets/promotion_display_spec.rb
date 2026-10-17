@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
-require 'spree/testing_support/dummy_ability'
+require "rails_helper"
+require "spree/testing_support/dummy_ability"
 
 RSpec.describe Spree::PermissionSets::PromotionDisplay do
   let(:ability) { DummyAbility.new }
@@ -38,5 +38,17 @@ RSpec.describe Spree::PermissionSets::PromotionDisplay do
     it { is_expected.not_to be_able_to(:admin, Spree::PromotionCategory) }
     it { is_expected.not_to be_able_to(:admin, Spree::PromotionCode) }
     it { is_expected.not_to be_able_to(:edit, Spree::Promotion) }
+  end
+
+  describe ".privilege" do
+    it "returns the correct privilege symbol" do
+      expect(described_class.privilege).to eq(:display)
+    end
+  end
+
+  describe ".category" do
+    it "returns the correct category symbol" do
+      expect(described_class.category).to eq(:promotion)
+    end
   end
 end

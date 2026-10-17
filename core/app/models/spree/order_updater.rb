@@ -18,17 +18,18 @@ module Spree
     # associations try to save and then in turn try to call +update!+ again.)
     def recalculate
       order.transaction do
-        update_item_count
+        recalculate_line_item_prices
+        recalculate_item_count
         update_shipment_amounts
         update_totals
         if order.completed?
-          update_payment_state
+          recalculate_payment_state
           update_shipments
-          update_shipment_state
+          recalculate_shipment_state
         end
-        Spree::Bus.publish(:order_recalculated, order:)
         persist_totals
       end
+      Spree::Bus.publish(:order_recalculated, order:)
     end
     alias_method :update, :recalculate
     deprecate update: :recalculate, deprecator: Spree.deprecator
@@ -43,15 +44,17 @@ module Spree
     # pending   when all Shipments are in the "pending" state
     #
     # The +shipment_state+ value helps with reporting, etc. since it provides a quick and easy way to locate Orders needing attention.
-    def update_shipment_state
-      log_state_change('shipment') do
+    def recalculate_shipment_state
+      log_state_change("shipment") do
         order.shipment_state = determine_shipment_state
       end
 
       order.shipment_state
     end
+    alias_method :update_shipment_state, :recalculate_shipment_state
+    deprecate update_shipment_state: :recalculate_shipment_state, deprecator: Spree.deprecator
 
-    # Updates the +payment_state+ attribute according to the following logic:
+    # Recalculates the +payment_state+ attribute according to the following logic:
     #
     # paid          when +payment_total+ is equal to +total+
     # balance_due   when +payment_total+ is less than +total+
@@ -60,40 +63,42 @@ module Spree
     # void          when the order has been canceled and the payment total is 0
     #
     # The +payment_state+ value helps with reporting, etc. since it provides a quick and easy way to locate Orders needing attention.
-    def update_payment_state
-      log_state_change('payment') do
+    def recalculate_payment_state
+      log_state_change("payment") do
         order.payment_state = determine_payment_state
       end
 
       order.payment_state
     end
+    alias_method :update_payment_state, :recalculate_payment_state
+    deprecate update_payment_state: :recalculate_payment_state, deprecator: Spree.deprecator
 
     private
 
     def determine_payment_state
       if payments.present? && payments.valid.empty? && order.outstanding_balance != 0
-        'failed'
-      elsif order.state == 'canceled' && order.payment_total.zero?
-        'void'
+        "failed"
+      elsif order.state == "canceled" && order.payment_total.zero?
+        "void"
       elsif order.outstanding_balance > 0
-        'balance_due'
+        "balance_due"
       elsif order.outstanding_balance < 0
-        'credit_owed'
+        "credit_owed"
       else
         # outstanding_balance == 0
-        'paid'
+        "paid"
       end
     end
 
     def determine_shipment_state
       if order.backordered?
-        'backorder'
+        "backorder"
       else
         # get all the shipment states for this order
         shipment_states = shipments.states
         if shipment_states.size > 1
           # multiple shiment states means it's most likely partially shipped
-          'partial'
+          "partial"
         else
           # will return nil if no shipments are found
           shipment_states.first
@@ -106,7 +111,7 @@ module Spree
     # fields (promo_total, included_tax_total, additional_tax_total, and
     # adjustment_total) on the item.
     # @return [void]
-    def recalculate_adjustments
+    def update_adjustments
       # Promotion adjustments must be applied first, then tax adjustments.
       # This fits the criteria for VAT tax as outlined here:
       # http://www.hmrc.gov.uk/vat/managing/charging/discounts-etc.htm#1
@@ -114,8 +119,10 @@ module Spree
       # http://www.boe.ca.gov/formspubs/pub113/
       update_promotions
       update_tax_adjustments
-      update_item_totals
+      recalculate_item_totals
     end
+    alias_method :recalculate_adjustments, :update_adjustments
+    deprecate recalculate_adjustments: :update_adjustments, deprecator: Spree.deprecator
 
     # Updates the following Order total values:
     #
@@ -125,9 +132,9 @@ module Spree
     # +promo_total+        The total value of all promotion adjustments
     # +total+              The so-called "order total."  This is equivalent to +item_total+ plus +adjustment_total+.
     def update_totals
-      update_payment_total
-      update_item_total
-      update_shipment_total
+      recalculate_payment_total
+      recalculate_item_total
+      recalculate_shipment_total
       update_adjustment_total
     end
 
@@ -140,23 +147,29 @@ module Spree
       shipments.each(&:update_state)
     end
 
-    def update_payment_total
-      order.payment_total = payments.completed.includes(:refunds).sum { |payment| payment.amount - payment.refunds.sum(:amount) }
+    def recalculate_payment_total
+      order.payment_total = payments.completed.includes(:refunds).sum { |payment| payment.amount - payment.refunds.sum(&:amount) }
     end
+    alias_method :update_payment_total, :recalculate_payment_total
+    deprecate update_payment_total: :recalculate_payment_total, deprecator: Spree.deprecator
 
-    def update_shipment_total
+    def recalculate_shipment_total
       order.shipment_total = shipments.to_a.sum(&:cost)
-      update_order_total
+      recalculate_order_total
     end
+    alias_method :update_shipment_total, :recalculate_shipment_total
+    deprecate update_shipment_total: :recalculate_shipment_total, deprecator: Spree.deprecator
 
-    def update_order_total
+    def recalculate_order_total
       order.total = order.item_total + order.shipment_total + order.adjustment_total
     end
+    alias_method :update_order_total, :recalculate_order_total
+    deprecate update_order_total: :recalculate_order_total, deprecator: Spree.deprecator
 
     def update_adjustment_total
-      recalculate_adjustments
+      update_adjustments
 
-      all_items = line_items + shipments
+      all_items = (line_items + shipments).reject(&:marked_for_destruction?)
       # Ignore any adjustments that have been marked for destruction in our
       # calculations. They'll get removed when/if we persist the order.
       valid_adjustments = adjustments.reject(&:marked_for_destruction?)
@@ -166,17 +179,21 @@ module Spree
       order.included_tax_total = all_items.sum(&:included_tax_total) + order_tax_adjustments.select(&:included?).sum(&:amount)
       order.additional_tax_total = all_items.sum(&:additional_tax_total) + order_tax_adjustments.reject(&:included?).sum(&:amount)
 
-      update_order_total
+      recalculate_order_total
     end
 
-    def update_item_count
+    def recalculate_item_count
       order.item_count = line_items.to_a.sum(&:quantity)
     end
+    alias_method :update_item_count, :recalculate_item_count
+    deprecate update_item_count: :recalculate_item_count, deprecator: Spree.deprecator
 
-    def update_item_total
+    def recalculate_item_total
       order.item_total = line_items.to_a.sum(&:amount)
-      update_order_total
+      recalculate_order_total
     end
+    alias_method :update_item_total, :recalculate_item_total
+    deprecate update_item_total: :recalculate_item_total, deprecator: Spree.deprecator
 
     def persist_totals
       order.save!
@@ -210,19 +227,24 @@ module Spree
     end
     deprecate :update_cancellations, deprecator: Spree.deprecator
 
-    def update_item_totals
+    def recalculate_item_totals
       [*line_items, *shipments].each do |item|
         Spree::Config.item_total_class.new(item).recalculate!
 
         next unless item.changed?
 
-        item.update_columns(
-          promo_total:          item.promo_total,
-          included_tax_total:   item.included_tax_total,
+        item.assign_attributes(
+          promo_total: item.promo_total,
+          included_tax_total: item.included_tax_total,
           additional_tax_total: item.additional_tax_total,
-          adjustment_total:     item.adjustment_total,
-          updated_at:           Time.current,
+          adjustment_total: item.adjustment_total
         )
+      end
+    end
+
+    def recalculate_line_item_prices
+      if Spree::Config.recalculate_cart_prices
+        line_items.each(&:recalculate_price)
       end
     end
   end

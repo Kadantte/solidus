@@ -70,6 +70,13 @@ SolidusPromotions.configure do |config|
 end
 ```
 
+### Coupon Code Normalization
+
+Solidus Promotions provides a configurable coupon code normalizer that controls how coupon codes are processed before saving and lookup. By default, codes are case-insensitive (e.g., "SAVE20" and "save20" are treated as the same). 
+You can customize this behavior to support case-sensitive codes, remove special characters, apply formatting rules, or implement other normalization strategies based on your business requirements.
+
+See the `coupon_code_normalizer_class` configuration option for implementation details.
+
 ## Installation
 
 Add solidus_promotions to your Gemfile:
@@ -122,4 +129,4 @@ SolidusDevSupport::TestingSupport::Factories.load_for(SolidusPromotions::Engine)
 
 ## License
 
-Copyright (c) 2024 Martin Meyerhoff, Solidus Team, released under the [license of the parent repository](https://github.com/solidusio/solidus/blob/main/LICENSE.md).
+Copyright (c) 2024 Martin Meyerhoff, Solidus Team, released under the [BSD-3-Clause license](./LICENSE).

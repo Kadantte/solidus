@@ -12,7 +12,7 @@ descriptions = [
   "Perferendis sed voluptatem error ipsam voluptatem esse ipsa incidunt. Doloremque quos ratione quia voluptas consequatur mollitia optio. Optio sed iure aut aliquid voluptatum facilis mollitia cum. Dignissimos in saepe consequatur et consequatur dolorem blanditiis.",
   "Necessitatibus optio quod ullam itaque quis corporis occaecati. Saepe harum voluptates consectetur rerum dolorum. Corrupti officiis reprehenderit quo excepturi cumque. Soluta eos perspiciatis aut et ea nulla amet dolores. Dolores distinctio nesciunt libero voluptas molestiae consequatur aut veritatis.",
   "Soluta sed error debitis repellendus et. Voluptates unde enim qui velit. Libero earum tenetur nulla similique temporibus quod repellendus quibusdam.",
-  "Recusandae animi deserunt provident dignissimos ullam harum alias et. Itaque dicta maxime consectetur ut nemo non voluptatem. Voluptatem ipsum ut culpa eaque dolores.",
+  "Recusandae animi deserunt provident dignissimos ullam harum alias et. Itaque dicta maxime consectetur ut nemo non voluptatem. Voluptatem ipsum ut culpa eaque dolores."
 ]
 
 default_attrs = {
@@ -32,7 +32,7 @@ products = [
     weight: 0.5,
     height: 20,
     width: 10,
-    depth: 5,
+    depth: 5
   },
   {
     name: "Solidus tote",
@@ -45,7 +45,7 @@ products = [
     weight: 0.5,
     height: 20,
     width: 10,
-    depth: 5,
+    depth: 5
   },
   {
     name: "Solidus hoodie",
@@ -58,7 +58,7 @@ products = [
     weight: 1,
     height: 20,
     width: 10,
-    depth: 5,
+    depth: 5
   },
   {
     name: "Solidus mug set",
@@ -181,15 +181,17 @@ products = [
 ]
 
 products.each do |product_attrs|
+  next if Spree::Product.exists?(name: product_attrs[:name])
+
   eur_price = product_attrs.delete(:eur_price)
-  Spree::Config[:currency] = "USD"
+  Spree::Config.currency = "USD"
 
   product = Spree::Product.create!(default_attrs.merge(product_attrs))
-  Spree::Config[:currency] = "EUR"
+  Spree::Config.currency = "EUR"
   product.reload
   product.price = eur_price
   product.shipping_category = shipping_category
   product.save!
 end
 
-Spree::Config[:currency] = "USD"
+Spree::Config.currency = "USD"

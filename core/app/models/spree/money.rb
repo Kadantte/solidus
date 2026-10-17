@@ -5,12 +5,13 @@ module Spree
   # formatting via Spree::Config.
   class Money
     include Comparable
+
     DifferentCurrencyError = Class.new(StandardError)
 
     class << self
       attr_accessor :default_formatting_rules
 
-      def parse(amount, currency = Spree::Config[:currency])
+      def parse(amount, currency = Spree::Config.currency)
         new(parse_to_money(amount, currency))
       end
 
@@ -35,7 +36,7 @@ module Spree
       if amount.is_a?(::Money)
         @money = amount
       else
-        currency = options[:currency] || Spree::Config[:currency]
+        currency = options[:currency] || Spree::Config.currency
 
         @money = Monetize.from_string(amount, currency)
       end
@@ -69,7 +70,7 @@ module Spree
     # @param options [Hash] additional formatting options
     # @return [String] the value of this money object formatted according to
     #   its options and any additional options, by default with html_wrap.
-    def to_html(options = { html_wrap: true })
+    def to_html(options = {html_wrap: true})
       output = format(options)
       # Maintain compatibility by checking html option renamed to html_wrap.
       if options[:html_wrap]

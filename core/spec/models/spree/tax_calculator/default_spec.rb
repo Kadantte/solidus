@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe Spree::TaxCalculator::Default do
   let(:shipping_address) { FactoryBot.create(:address, state: new_york) }
@@ -26,7 +26,7 @@ RSpec.describe Spree::TaxCalculator::Default do
       :product,
       price: 20,
       name: "Book",
-      tax_category: books_category,
+      tax_category: books_category
     )
 
     order.contents.add(book.master)
@@ -34,7 +34,7 @@ RSpec.describe Spree::TaxCalculator::Default do
 
   let(:calculator) { described_class.new(order) }
 
-  describe '#calculate' do
+  describe "#calculate" do
     subject(:calculated_taxes) { calculator.calculate }
 
     it { is_expected.to be_a Spree::Tax::OrderTax }
@@ -74,6 +74,19 @@ RSpec.describe Spree::TaxCalculator::Default do
         expect(order_tax.amount).to eq 0.27
         expect(order_tax.tax_rate).to eq flat_fee_rate
         expect(order_tax.label).to eq "Flat Book Fee"
+      end
+    end
+
+    context "with multiple line items" do
+      before do
+        2.times do
+          order.contents.add(FactoryBot.create(:product, tax_category: books_category).master)
+        end
+        order.reload
+      end
+
+      it "loads line item variants in a single query" do
+        expect { calculator.calculate }.to make_database_queries(matching: /from .spree_variants..*\bid. IN \(/im, count: 1)
       end
     end
   end

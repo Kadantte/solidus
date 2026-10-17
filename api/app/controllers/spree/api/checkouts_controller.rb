@@ -16,42 +16,44 @@ module Spree
       def next
         authorize! :update, @order, order_token
         if !expected_total_ok?(params[:expected_total])
-          respond_with(@order, default_template: 'spree/api/orders/expected_total_mismatch', status: 400)
+          respond_with(@order, default_template: "spree/api/orders/expected_total_mismatch", status: 400)
           return
         end
         @order.next!
-        respond_with(@order, default_template: 'spree/api/orders/show', status: 200)
+        respond_with(@order, default_template: "spree/api/orders/show", status: 200)
       end
 
       def advance
         authorize! :update, @order, order_token
         @order.contents.advance
-        respond_with(@order, default_template: 'spree/api/orders/show', status: 200)
+        respond_with(@order, default_template: "spree/api/orders/show", status: 200)
       end
 
       def complete
         authorize! :update, @order, order_token
         if !expected_total_ok?(params[:expected_total])
-          respond_with(@order, default_template: 'spree/api/orders/expected_total_mismatch', status: 400)
+          respond_with(@order, default_template: "spree/api/orders/expected_total_mismatch", status: 400)
         else
           @order.complete!
-          respond_with(@order, default_template: 'spree/api/orders/show', status: 200)
+          respond_with(@order, default_template: "spree/api/orders/show", status: 200)
         end
       end
 
       def update
         authorize! :update, @order, order_token
 
+        if can?(:admin, @order) && user_id.present?
+          user = Spree.user_class.accessible_by(current_ability, :show).find(user_id)
+        end
+
         if Spree::Config.order_update_attributes_class.new(@order, update_params, request_env: request.headers.env).call
-          if can?(:admin, @order) && user_id.present?
-            @order.associate_user!(Spree.user_class.find(user_id))
-          end
+          @order.associate_user!(user) if user
 
           return if after_update_attributes
 
           if @order.completed? || @order.next!
             state_callback(:after)
-            respond_with(@order, default_template: 'spree/api/orders/show')
+            respond_with(@order, default_template: "spree/api/orders/show")
           end
         else
           invalid_resource!(@order)
@@ -105,8 +107,18 @@ module Spree
       end
 
       def update_order_state
-        @order.state = params[:state] if params[:state]
+        return unless params[:state]
+
+        unless Spree::Api::Config.allow_arbitrary_state_in_checkout || valid_checkout_step?(params[:state])
+          return respond_with(@order, default_template: "spree/api/orders/invalid_state", status: 422)
+        end
+
+        @order.state = params[:state]
         state_callback(:before)
+      end
+
+      def valid_checkout_step?(step)
+        @order.passed_checkout_step?(step) || @order.state == step
       end
 
       def state_callback(before_or_after = :before)

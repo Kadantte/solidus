@@ -2,11 +2,25 @@
 
 require "spec_helper"
 
-RSpec.describe "SolidusAdmin::PropertiesController", type: :request do
+RSpec.describe "SolidusAdmin::ProductsController", type: :request do
   let(:admin_user) { create(:admin_user) }
 
   before do
     allow_any_instance_of(SolidusAdmin::BaseController).to receive(:spree_current_user).and_return(admin_user)
+  end
+
+  describe "GET #index" do
+    before { create_list(:product, 3) }
+
+    it "renders successfully" do
+      get solidus_admin.products_path
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "loads stock for every product without an N+1" do
+      expect { get solidus_admin.products_path }
+        .to make_database_queries(matching: /from .spree_stock_items./i, count: 1)
+    end
   end
 
   describe "PATCH #update" do
@@ -31,12 +45,12 @@ RSpec.describe "SolidusAdmin::PropertiesController", type: :request do
         discontinue_on: "2026-01-06".to_date,
         promotionable: true,
         option_type_ids: [create(:option_type).id, create(:option_type).id],
-        taxon_ids: [create(:taxon).id, create(:taxon).id],
+        taxon_ids: [create(:taxon).id, create(:taxon).id]
       }
     end
 
     it "updates product" do
-      patch solidus_admin.product_path(product), params: { product: params }
+      patch solidus_admin.product_path(product), params: {product: params}
       expect(response).to have_http_status(:see_other)
       expect(product.reload).to have_attributes(params.except(Spree::Product::MASTER_ATTRIBUTES))
       %i[gtin condition price cost_price cost_currency sku].each do |attr|

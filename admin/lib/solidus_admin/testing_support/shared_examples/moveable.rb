@@ -13,7 +13,7 @@ RSpec.shared_examples_for "requests: moveable" do
 
   describe "PATCH /move" do
     it "updates record's position" do
-      expect { patch request_path, params: { position: 2 } }.to change { record.reload.position }.from(1).to(2)
+      expect { patch request_path, params: {position: 2} }.to change { record.reload.position }.from(1).to(2)
       expect(response).to have_http_status(:no_content)
     end
   end
@@ -22,10 +22,11 @@ end
 RSpec.shared_examples_for "features: sortable" do
   let(:factory_attrs) { {} }
   let(:scope) { "body" }
+  let(:handle) { nil }
 
   before do
-    create(factory, displayed_attribute => "First", position: 1, **factory_attrs)
-    create(factory, displayed_attribute => "Second", position: 2, **factory_attrs)
+    create(factory, displayed_attribute => "First", :position => 1, **factory_attrs)
+    create(factory, displayed_attribute => "Second", :position => 2, **factory_attrs)
     visit path
   end
 
@@ -35,7 +36,10 @@ RSpec.shared_examples_for "features: sortable" do
       expect(find("[data-controller='sortable']").all(:xpath, "./*").last).to have_text("Second")
 
       rows = find("[data-controller='sortable']").all(:xpath, "./*")
-      rows[1].drag_to rows[0]
+      target = rows[0]
+      source = rows[1]
+      source = source.find(handle) if handle
+      source.drag_to target
 
       expect(find("[data-controller='sortable']").all(:xpath, "./*").first).to have_text("Second")
       expect(find("[data-controller='sortable']").all(:xpath, "./*").last).to have_text("First")

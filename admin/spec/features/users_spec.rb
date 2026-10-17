@@ -45,6 +45,7 @@ describe "Users", :js, type: :feature do
     let(:sign_in_date) { DateTime.now }
 
     before do
+      allow_any_instance_of(Spree.user_class).to receive(:try).with(:timezone) { nil }
       allow_any_instance_of(Spree.user_class).to receive(:try).with(:email).and_call_original
       allow_any_instance_of(Spree.user_class).to receive(:try).with(:last_sign_in_at).and_return(sign_in_date)
     end
@@ -82,11 +83,11 @@ describe "Users", :js, type: :feature do
       expect(page).to have_content("Key generated")
       expect(page).to have_content("(hidden)")
 
-      click_on "Regenerate key"
+      accept_turbo_confirm("Are you sure?") { click_on "Regenerate key" }
       expect(page).to have_content("Key generated")
       expect(page).to have_content("(hidden)")
 
-      click_on "Clear key"
+      accept_turbo_confirm("Are you sure?") { click_on "Clear key" }
       expect(page).to have_content("Key cleared")
       expect(page).to have_content("No key")
 
@@ -206,16 +207,16 @@ describe "Users", :js, type: :feature do
         expect(page).not_to have_content("No Orders found.")
       end
 
-      context 'with a different currency' do
+      context "with a different currency" do
         around do |example|
           currency_was = Spree::Config.currency
-          Spree::Config.currency = 'EUR'
+          Spree::Config.currency = "EUR"
           example.run
           Spree::Config.currency = currency_was
         end
 
-        it 'displays correct currency' do
-          page.assert_selector('section table td:last-child', exact_text: /€\d\.\d{2}/, count: user.orders.count)
+        it "displays correct currency" do
+          page.assert_selector("section table td:last-child", exact_text: /€\d\.\d{2}/, count: user.orders.count)
         end
       end
     end

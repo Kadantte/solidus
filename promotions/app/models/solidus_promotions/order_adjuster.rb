@@ -5,6 +5,12 @@ module SolidusPromotions
     attr_reader :order, :promotions, :dry_run
 
     def initialize(order, dry_run_promotion: nil)
+      if dry_run_promotion
+        Spree.deprecator.warn <<~MSG
+          Passing `dry_run_promotion` to `SolidusPromotions::OrderAdjuster` is deprecated.
+          Use `Spree::Config.promotions.eligibility_checker_class.new(order: order, promotion: promotion).call` instead.
+        MSG
+      end
       @order = order
       @dry_run = !!dry_run_promotion
       @promotions = SolidusPromotions::LoadPromotions.new(
@@ -13,24 +19,18 @@ module SolidusPromotions
       ).call
     end
 
-    def call
-      order.reset_current_discounts
-
+    def call(persist: true) # rubocop:disable Lint/UnusedMethodArgument
       return order unless SolidusPromotions::Promotion.order_activatable?(order)
 
-      discounted_order = DiscountOrder.new(order, promotions, dry_run: dry_run).call
+      ActiveRecord::Associations::Preloader.new(records: order.line_items + order.shipments, associations: :adjustments).call
+      # DiscountOrder dereferences `line_item.variant.product` for every line item.
+      ActiveRecord::Associations::Preloader.new(records: order.line_items, associations: {variant: :product}).call
 
-      PersistDiscountedOrder.new(discounted_order).call unless dry_run
+      SetDiscountsToZero.call(order)
 
-      order.reset_current_discounts
+      DiscountOrder.new(order, promotions, dry_run: dry_run).call
 
-      unless dry_run
-        # Since automations might have added a line item, we need to recalculate item total and item count here.
-        order.item_total = order.line_items.sum(&:amount)
-        order.item_count = order.line_items.sum(&:quantity)
-        order.promo_total = (order.line_items + order.shipments).sum(&:promo_total)
-      end
-      order
+      RecalculatePromoTotals.call(order)
     end
   end
 end

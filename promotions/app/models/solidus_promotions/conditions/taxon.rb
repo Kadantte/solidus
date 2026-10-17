@@ -5,96 +5,47 @@ module SolidusPromotions
     class Taxon < Condition
       include LineItemApplicableOrderLevelCondition
 
-      has_many :condition_taxons,
-        class_name: "SolidusPromotions::ConditionTaxon",
-        foreign_key: :condition_id,
-        dependent: :destroy,
-        inverse_of: :condition
-      has_many :taxons, through: :condition_taxons, class_name: "Spree::Taxon"
-
-      def preload_relations
-        [:taxons]
-      end
+      include TaxonCondition
 
       MATCH_POLICIES = %w[any all none].freeze
 
-      validates :preferred_match_policy, inclusion: { in: MATCH_POLICIES }
+      validates :preferred_match_policy, inclusion: {in: MATCH_POLICIES}
 
       preference :match_policy, :string, default: MATCH_POLICIES.first
 
-      def order_eligible?(order)
-        order_taxons = taxons_in_order(order)
+      def order_eligible?(order, _options = {})
+        order_condition = OrderTaxon.new(taxons:, preferred_match_policy:)
 
-        case preferred_match_policy
-        when "all"
-          matches_all = taxons.all? do |condition_taxon|
-            order_taxons.where(id: condition_taxon.self_and_descendants.ids).exists?
-          end
+        # Hydrate the instance cache with our @taxon_ids_with_children cache
+        order_condition.taxons_ids_with_children = taxon_ids_with_children
 
-          unless matches_all
-            eligibility_errors.add(:base, eligibility_error_message(:missing_taxon), error_code: :missing_taxon)
-          end
-        when "any"
-          unless order_taxons.where(id: condition_taxon_ids_with_children).exists?
-            eligibility_errors.add(
-              :base,
-              eligibility_error_message(:no_matching_taxons),
-              error_code: :no_matching_taxons
-            )
-          end
-        when "none"
-          if order_taxons.where(id: condition_taxon_ids_with_children).exists?
-            eligibility_errors.add(
-              :base,
-              eligibility_error_message(:has_excluded_taxon),
-              error_code: :has_excluded_taxon
-            )
-          end
-        else
-          raise "unexpected match policy: #{preferred_match_policy.inspect}"
-        end
-
+        order_condition.order_eligible?(order)
+        @eligibility_errors = order_condition.eligibility_errors
         eligibility_errors.empty?
       end
 
-      def line_item_eligible?(line_item)
-        # The order level eligibility check happens first, and if none of the taxons
-        # are in the order, then no line items should be available to check.
-        raise "This should not happen" if preferred_match_policy == "none"
+      def line_item_eligible?(line_item, _options = {})
+        line_item_match_policy = preferred_match_policy.in?(%w[any all]) ? "include" : "exclude"
+        line_item_condition = LineItemTaxon.new(taxons:, preferred_match_policy: line_item_match_policy)
 
-        raise "unexpected match policy: #{preferred_match_policy.inspect}" unless preferred_match_policy.in?(MATCH_POLICIES)
+        # Hydrate the instance cache with our @taxon_ids_with_children cache\
+        line_item_condition.taxons_ids_with_children = taxon_ids_with_children
 
-        Spree::Classification.where(
-          product_id: line_item.variant.product_id,
-          taxon_id: condition_taxon_ids_with_children
-        ).exists?
+        result = line_item_condition.line_item_eligible?(line_item)
+        @eligibility_errors = line_item_condition.eligibility_errors
+        result
       end
 
-      def taxon_ids_string
-        taxon_ids.join(",")
-      end
+      def price_eligible?(price, _options = {})
+        price_match_policy = preferred_match_policy.in?(%w[any all]) ? "include" : "exclude"
+        price_condition = PriceTaxon.new(taxons:, preferred_match_policy: price_match_policy)
 
-      def taxon_ids_string=(taxon_ids)
-        self.taxon_ids = taxon_ids.to_s.split(",").map(&:strip)
-      end
+        # Hydrate the instance cache with our @taxon_ids_with_children cache
+        price_condition.taxons_ids_with_children = taxon_ids_with_children
 
-      def updateable?
-        true
-      end
-
-      private
-
-      # All taxons in an order
-      def taxons_in_order(order)
-        Spree::Taxon
-          .joins(products: { variants_including_master: :line_items })
-          .where(spree_line_items: { order_id: order.id })
-          .distinct
-      end
-
-      # ids of taxons conditions and taxons conditions children
-      def condition_taxon_ids_with_children
-        taxons.flat_map { |taxon| taxon.self_and_descendants.ids }.uniq
+        result = price_condition.price_eligible?(price)
+        @eligibility_errors = price_condition.eligibility_errors
+        result
       end
     end
   end

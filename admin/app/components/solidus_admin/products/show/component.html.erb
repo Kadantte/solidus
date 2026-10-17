@@ -42,6 +42,7 @@
         <%= render component("ui/panel").new(title: t(".media")) do |panel| %>
           <% panel.with_action(
             name: t(".manage_images"),
+            scheme: :secondary,
             href: spree.admin_product_images_path(@product)
           ) %>
         <% end %>
@@ -59,6 +60,7 @@
 
           <% panel.with_action(
             name: t(".manage_stock"),
+            scheme: :secondary,
             href: spree.admin_product_stock_path(@product)
           ) %>
         <% end %>
@@ -76,13 +78,51 @@
           ) %>
         <% end %>
 
-        <%= render component("ui/panel").new(title: t(".options")) do %>
-          <%= f.select(:option_type_ids, option_type_options, multiple: true) %>
+        <%= render component("ui/panel").new(title: t(".options")) do |panel| %>
+          <% if @product.product_option_types.present? %>
+            <% panel.with_section do %>
+              <div class="flex flex-col gap-4" data-controller="sortable" data-sortable-handle-value=".handle">
+                <% @product.product_option_types.includes(option_type: :option_values).order(:position).each do |product_option| %>
+                  <div class="flex gap-2 justify-between" data-sortable-url=<%= solidus_admin.move_product_option_type_path(product_option) %>>
+                    <div class="flex gap-2">
+                      <div class="flex items-center">
+                        <%= render component("ui/icon").new(name: "draggable", class: "w-6 h-6 cursor-grab handle fill-gray-500") %>
+                      </div>
+                      <div class="flex flex-col gap-2">
+                        <span class="font-semibold text-sm"><%= product_option.option_type.name %>:<%= product_option.option_type.presentation %></span>
+                        <div class="flex gap-2 flex-wrap">
+                          <% product_option.option_type.option_values.each do |value| %>
+                            <%= render component("ui/badge").new(name: "#{value.name}:#{value.presentation}") %>
+                          <% end %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="flex items-center">
+                      <%= render component("ui/button").new(tag: :a, href: spree.edit_admin_option_type_path(product_option.option_type), scheme: :secondary, text: t(".edit")) %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+
+          <div class="flex gap-4 justify-between items-end">
+            <%= hidden_field_tag "#{f.object_name}[option_type_ids][]", nil %>
+            <%= f.select(:option_type_ids, option_type_options, multiple: true) %>
+            <%= render component("ui/button").new(type: :submit, text: t(".save")) %>
+          </div>
+
+          <% panel.with_action(
+            name: t(".manage_options"),
+            scheme: :secondary,
+            href: solidus_admin.option_types_path
+          ) %>
         <% end %>
 
         <%= render component("ui/panel").new(title: t(".specifications")) do |panel| %>
           <% panel.with_action(
             name: t(".manage_properties"),
+            scheme: :secondary,
             href: spree.admin_product_product_properties_path(@product)
           ) %>
         <% end %>
@@ -105,8 +145,22 @@
           <%= f.checkbox(:promotionable, hint: t(".hints.promotionable_html")) %>
         <% end %>
 
-        <%= render component("ui/panel").new(title: t(".product_organization")) do %>
-          <%= f.select(:taxon_ids, taxon_options, multiple: true) %>
+        <%= render component("ui/panel").new(title: t(".product_organization")) do |panel| %>
+          <%= hidden_field_tag "#{f.object_name}[taxon_ids][]", nil %>
+
+          <%= render component("turbo/target_frame").new(:product_organization_frame, source: :new_product_category) do %>
+            <%= render component("ui/forms/field").select(
+              f,
+              :taxon_ids,
+              taxon_options,
+              multiple: true
+            ) %>
+          <% end %>
+          <% panel.with_action(
+            name: t(".add_new_category"),
+            href: solidus_admin.new_product_taxon_path(@product),
+            data: { turbo_frame: :new_product_category }
+          ) %>
         <% end %>
       <% end %>
     <% end %>
@@ -119,11 +173,12 @@
           tag: :button,
           text: t(".delete"),
           scheme: :danger,
-          "data-action": "click->#{stimulus_id}#confirmDelete",
-          "data-#{stimulus_id}-message-param": t(".delete_confirmation"),
+          "data-turbo-confirm": t(".delete_confirmation")
         ) %>
       <% end %>
     <% end %>
     <%= render component("ui/button").new(tag: :button, text: t(".save"), form: form_id) %>
   <% end %>
 <% end %>
+
+<%= turbo_frame_tag :new_product_category, target: :product_organization_frame %>

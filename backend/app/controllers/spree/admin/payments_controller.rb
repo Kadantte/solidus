@@ -9,6 +9,7 @@ module Spree
       before_action :load_payment, except: [:create, :new, :index, :fire]
       before_action :load_payment_for_fire, only: :fire
       before_action :load_data
+      before_action :load_log_entries, only: [:show]
       before_action :require_bill_address, only: [:index]
 
       helper ::Spree::Admin::OrdersHelper
@@ -16,7 +17,7 @@ module Spree
       respond_to :html
 
       def index
-        @payments = @order.payments.includes(refunds: :reason)
+        @payments = @order.payments.includes(:payment_method, refunds: :reason)
         @refunds = @payments.flat_map(&:refunds)
         redirect_to new_admin_order_payment_url(@order) if @payments.empty?
       end
@@ -27,8 +28,10 @@ module Spree
 
       def create
         @payment = PaymentCreate.new(@order, object_params).build
-        if @payment.payment_method.source_required? && params[:card].present? && params[:card] != 'new'
-          @payment.source = @payment.payment_method.payment_source_class.find_by(id: params[:card])
+        if @payment.payment_method.source_required? && params[:card].present? && params[:card] != "new"
+          @payment.source = @payment.payment_method
+            .reusable_sources(@order)
+            .detect { |source| source.id == params[:card].to_i }
         end
 
         begin
@@ -45,7 +48,7 @@ module Spree
             flash[:success] = flash_message_for(@payment, :successfully_created)
             redirect_to admin_order_payments_path(@order)
           else
-            flash[:error] = t('spree.payment_could_not_be_created')
+            flash[:error] = t("spree.payment_could_not_be_created")
             render :new
           end
         rescue Spree::Core::GatewayError => error
@@ -57,12 +60,17 @@ module Spree
       def fire
         return unless (event = params[:e]) && @payment.payment_source
 
+        unless @payment.actions.include?(event)
+          flash[:error] = t("spree.cannot_perform_operation")
+          return
+        end
+
         # Because we have a transition method also called void, we do this to avoid conflicts.
         event = "void_transaction" if event == "void"
         if @payment.send("#{event}!")
-          flash[:success] = t('spree.payment_updated')
+          flash[:success] = t("spree.payment_updated")
         else
-          flash[:error] = t('spree.cannot_perform_operation')
+          flash[:error] = t("spree.cannot_perform_operation")
         end
       rescue Spree::Core::GatewayError => ge
         flash[:error] = ge.message.to_s
@@ -77,16 +85,18 @@ module Spree
           params[:payment][:source_attributes] = source_params
         end
 
-        params.require(:payment).permit(permitted_payment_attributes)
+        # Admins are allowed to set the amount of a payment, so we need to
+        # permit it here. This is not permitted for non-admin users.
+        params.require(:payment).permit(permitted_payment_attributes + [:amount])
       end
 
       def load_data
         @amount = params[:amount] || load_order.total
         @payment_methods = Spree::PaymentMethod.active.available_to_admin.ordered_by_position
-        if @payment && @payment.payment_method
-          @payment_method = @payment.payment_method
+        @payment_method = if @payment&.payment_method
+          @payment.payment_method
         else
-          @payment_method = @payment_methods.first
+          @payment_methods.first
         end
       end
 
@@ -102,6 +112,13 @@ module Spree
         @payment = Spree::Payment.find(params[:id])
       end
 
+      def load_log_entries
+        @all_log_entries = Spree::LogEntry
+          .where(source: @payment)
+          .or(Spree::LogEntry.where(source: @payment.refunds))
+          .order(:created_at)
+      end
+
       def load_payment_for_fire
         load_payment
         authorize! params[:e].to_sym, @payment
@@ -112,14 +129,14 @@ module Spree
       end
 
       def require_bill_address
-        if Spree::Config[:order_bill_address_used] && @order.bill_address.nil?
-          flash[:notice] = t('spree.fill_in_customer_info')
+        if Spree::Config.order_bill_address_used && @order.bill_address.nil?
+          flash[:notice] = t("spree.fill_in_customer_info")
           redirect_to edit_admin_order_customer_url(@order)
         end
       end
 
       def insufficient_stock_error
-        flash[:error] = t('spree.insufficient_stock_for_order')
+        flash[:error] = t("spree.insufficient_stock_for_order")
         redirect_to new_admin_order_payment_url(@order)
       end
     end

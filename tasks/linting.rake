@@ -2,9 +2,14 @@
 
 namespace :lint do
   task :rb do
-    ci_options = "-f junit -o '#{__dir__}/../test-results/rubocop-results.xml' " if ENV['CI']
+    if ENV["CI"]
+      results_dir = "#{__dir__}/../test-results"
+      system "mkdir -p '#{results_dir}'"
+      ci_options = "--format 'Standard::Formatter' --format github --format junit --out '#{results_dir}/rubocop-results.xml' "
+    end
 
-    sh %{bundle exec rubocop -P -f clang #{ci_options}$(git ls-files -co --exclude-standard | grep -E "\\.rb$" | grep -v "/templates/")}
+    cmd = %{bundle exec standardrb #{ci_options}$(git ls-files -co --exclude-standard | grep -E "\\.rb$" | grep -v "/templates/")}
+    system(cmd) || exit($?.exitstatus)
   end
 
   task :erb do

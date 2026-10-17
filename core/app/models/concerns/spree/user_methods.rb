@@ -59,15 +59,15 @@ module Spree
         inverse_of: :user
 
       has_many :wallet_payment_sources,
-        foreign_key: 'user_id',
-        class_name: 'Spree::WalletPaymentSource',
+        foreign_key: "user_id",
+        class_name: "Spree::WalletPaymentSource",
         inverse_of: :user,
         dependent: :destroy
 
       after_create :auto_generate_spree_api_key
       before_destroy :check_for_deletion
 
-      include Spree::RansackableAttributes unless included_modules.include?(Spree::RansackableAttributes)
+      include Spree::RansackableAttributes unless include?(Spree::RansackableAttributes)
 
       ransack_alias :name, :addresses_name
       self.allowed_ransackable_associations = %w[addresses spree_roles]
@@ -97,22 +97,22 @@ module Spree
       self_orders = orders
       self_orders = self_orders.where(frontend_viewable: true) if only_frontend_viewable
       self_orders = self_orders.where(store:) if store
-      self_orders = self_orders.where('updated_at > ?', Spree::Config.completable_order_updated_cutoff_days.days.ago) if Spree::Config.completable_order_updated_cutoff_days
-      self_orders = self_orders.where('created_at > ?', Spree::Config.completable_order_created_cutoff_days.days.ago) if Spree::Config.completable_order_created_cutoff_days
+      self_orders = self_orders.where("updated_at > ?", Spree::Config.completable_order_updated_cutoff_days.days.ago) if Spree::Config.completable_order_updated_cutoff_days
+      self_orders = self_orders.where("created_at > ?", Spree::Config.completable_order_created_cutoff_days.days.ago) if Spree::Config.completable_order_created_cutoff_days
       last_order = self_orders.order(:created_at).last
       last_order unless last_order.try!(:completed?)
     end
 
     def available_store_credit_total(currency:)
-      store_credits.to_a.
-        select { |credit| credit.currency == currency }.
-        sum(&:amount_remaining)
+      store_credits.to_a
+        .select { |credit| credit.currency == currency }
+        .sum(&:amount_remaining)
     end
 
     def display_available_store_credit_total(currency:)
       Spree::Money.new(
         available_store_credit_total(currency:),
-        currency:,
+        currency:
       )
     end
 
@@ -130,14 +130,14 @@ module Spree
 
     # Updates the roles in keeping with the given ability's permissions
     #
-    # Roles that are not accessible to the given ability will be ignored. It
-    # also ensure not to remove non accessible roles when assigning new
-    # accessible ones.
+    # Roles that the given ability cannot manage will be ignored. It also
+    # ensure not to remove non manageable roles when assigning new manageable
+    # ones.
     #
     # @param given_roles [Spree::Role]
     # @param ability [Spree::Ability]
     def update_spree_roles(given_roles, ability:)
-      accessible_roles = Spree::Role.accessible_by(ability)
+      accessible_roles = Spree::Role.accessible_by(ability, :manage)
       non_accessible_roles = Spree::Role.all - accessible_roles
       new_accessible_roles = given_roles - non_accessible_roles
       self.spree_roles = spree_roles - accessible_roles + new_accessible_roles

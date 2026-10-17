@@ -19,11 +19,11 @@ module SolidusAdmin
       end
 
       def find_row(text)
-        find('table tbody tr td', text:)
+        find("table tbody tr td", text:)
       end
 
       def find_row_checkbox(text)
-        find('table tbody tr', text:).find('td:first-child input[type="checkbox"]')
+        find("table tbody tr", text:).find('td:first-child input[type="checkbox"]')
       end
 
       def select_row(text)
@@ -31,6 +31,10 @@ module SolidusAdmin
           checkbox.check
           checkbox.synchronize { checkbox.checked? }
         end
+      end
+
+      def panel(title:)
+        find("section", text: title).find(:xpath, "..")
       end
 
       # Select options from a "solidus-select" field
@@ -47,8 +51,21 @@ module SolidusAdmin
         within(dropdown) { expect(first(".option", visible: :all)).to be }
 
         Array.wrap(value).each do |val|
-          input.fill_in(with: val).send_keys(:return)
+          option = dropdown.first(".option", exact_text: val, minimum: 0, wait: 0)
+          if option
+            option.click
+          else
+            input.fill_in(with: val).send_keys(:return)
+          end
           expect(control).to have_text(val)
+        end
+      end
+
+      def solidus_unselect(value, from:)
+        input = find_field(from, visible: :all)
+        Array.wrap(value).each do |val|
+          item = input.sibling("div", text: val)
+          item.find("a").click
         end
       end
 
@@ -64,6 +81,27 @@ module SolidusAdmin
 
       def solidus_select_control(field)
         find_field(field, visible: :all).ancestor(".control")
+      end
+
+      def accept_turbo_confirm(title)
+        yield
+        dialog = find("dialog", text: title)
+        within(dialog) { find_button(id: "confirm-accept").click }
+      end
+
+      def switch(locator, on: true)
+        checkbox = find(:label, text: locator).find(:checkbox)
+        on ? checkbox.check : checkbox.uncheck
+      end
+
+      def dialog(parent: "body", **options)
+        within(parent) do
+          find("dialog", visible: :all, **options)
+        end
+      end
+
+      def turbo_frame_modal
+        dialog(parent: find("turbo-frame", visible: :all))
       end
     end
   end

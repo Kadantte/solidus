@@ -63,9 +63,9 @@ module Spree
           order = line_item.order
           line_items = actionable_line_items(order)
 
-          actioned_line_items = order.line_item_adjustments.reload.
-            select { |adjustment| adjustment.source == self && adjustment.amount < 0 }.
-            map(&:adjustable)
+          actioned_line_items = order.line_item_adjustments.reload
+            .select { |adjustment| adjustment.source == self && adjustment.amount < 0 }
+            .map(&:adjustable)
           other_line_items = actioned_line_items - [line_item]
 
           applicable_quantity = total_applicable_quantity(line_items)
@@ -75,13 +75,18 @@ module Spree
             line_item.quantity
           ].min
 
-          persist_quantity(usable_quantity, line_item)
+          set_line_item_action_quantity(usable_quantity, line_item)
 
           amount = adjustment_amount * usable_quantity
           [line_item.amount, amount].min * -1
         end
 
         private
+
+        def create_adjustment(adjustable, order, promotion_code)
+          return unless super
+          save!
+        end
 
         def actionable_line_items(order)
           order.line_items.select do |item|
@@ -97,17 +102,23 @@ module Spree
         end
 
         def total_used_quantity(line_items)
-          line_item_actions.where(
-            line_item_id: line_items.map(&:id)
-          ).sum(:quantity)
+          line_item_actions.select { |line_item_action|
+            line_items.map(&:id).include? line_item_action.line_item_id
+          }.sum(&:quantity)
         end
 
-        def persist_quantity(quantity, line_item)
+        def set_line_item_action_quantity(quantity, line_item)
           line_item_action = line_item_actions.where(
             line_item_id: line_item.id
           ).first_or_initialize
+
+          if line_item_action.persisted?
+            line_item.line_item_actions
+              .find { |action| action.id == line_item_action.id }
+              .quantity = quantity
+          end
+
           line_item_action.quantity = quantity
-          line_item_action.save!
         end
 
         ##

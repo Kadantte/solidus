@@ -5,22 +5,23 @@ module SolidusAdmin
     include Spree::Core::ControllerHelpers::StrongParameters
     include SolidusAdmin::ControllerHelpers::Search
 
-    search_scope(:completed, default: true) { _1.complete }
-    search_scope(:canceled) { _1.canceled }
-    search_scope(:returned) { _1.with_state(:returned) }
-    search_scope(:in_progress) { _1.with_state([:cart] + _1.checkout_step_names) }
-    search_scope(:all) { _1 }
+    search_scope(:completed, default: true) { _1.complete.order(completed_at: :desc) }
+    search_scope(:canceled) { _1.canceled.order(completed_at: :desc) }
+    search_scope(:returned) { _1.with_state(:returned).order(completed_at: :desc) }
+    search_scope(:in_progress) { _1.with_state([:cart] + _1.checkout_step_names).order(id: :desc) }
+    search_scope(:all) { _1.order(id: :desc) }
 
     def index
       orders = apply_search_to(
-        Spree::Order.order(created_at: :desc, id: :desc),
+        Spree::Order.includes(:line_items),
         param: :q,
+        distinct: false
       )
 
-      set_page_and_extract_portion_from(orders)
+      @page = paginate(orders)
 
       respond_to do |format|
-        format.html { render component('orders/index').new(page: @page) }
+        format.html { render component("orders/index").new(page: @page) }
       end
     end
 
@@ -35,23 +36,27 @@ module SolidusAdmin
     end
 
     def show
-      load_order
+      load_order(Spree::Order.includes(line_items: {variant: [:images, {product: :variant_images, option_values: :option_type}]}))
 
       respond_to do |format|
-        format.html { render component('orders/show').new(order: @order) }
+        format.html { render component("orders/show").new(order: @order) }
       end
     end
 
     def update
       load_order
 
+      if order_params[:user_id].present? && order_params[:user_id].to_s != @order.user_id.to_s
+        Spree.user_class.accessible_by(current_ability, :show).find(order_params[:user_id])
+      end
+
       @order.assign_attributes(order_params)
-      @order.email ||= @order.user.email if @order.user && @order.user.changed?
+      @order.email ||= @order.user.email if @order.user&.changed?
 
       if @order.save
-        flash[:notice] = t('.success')
+        flash[:notice] = t(".success")
       else
-        flash[:error] = t('.error')
+        flash[:error] = t(".error")
       end
 
       respond_to do |format|
@@ -71,7 +76,7 @@ module SolidusAdmin
       # We need to eager load active storage attachments when using it
       if Spree::Image.include?(Spree::Image::ActiveStorageAttachment)
         image_includes = {
-          attachment_attachment: { blob: { variant_records: { image_attachment: :blob } } }
+          attachment_attachment: {blob: {variant_records: {image_attachment: :blob}}}
         }
       end
 
@@ -84,11 +89,11 @@ module SolidusAdmin
           :prices,
           images: image_includes || {},
           option_values: :option_type,
-          stock_items: :stock_location,
+          stock_items: :stock_location
         )
 
       respond_to do |format|
-        format.html { render component('orders/cart/result').with_collection(@variants, order: @order), layout: false }
+        format.html { render component("orders/cart/result").with_collection(@variants, order: @order), layout: false }
       end
     end
 
@@ -96,6 +101,7 @@ module SolidusAdmin
       load_order
 
       @users = Spree.user_class
+        .accessible_by(current_ability, :show)
         .where.not(id: @order.user_id)
         .order(created_at: :desc, id: :desc)
         .ransack(params[:q])
@@ -104,14 +110,14 @@ module SolidusAdmin
         .limit(10)
 
       respond_to do |format|
-        format.html { render component('orders/show/customer_search/result').with_collection(@users, order: @order), layout: false }
+        format.html { render component("orders/show/customer_search/result").with_collection(@users, order: @order), layout: false }
       end
     end
 
     private
 
-    def load_order
-      @order = Spree::Order.find_by!(number: params[:id])
+    def load_order(scope = Spree::Order)
+      @order = scope.find_by!(number: params[:id])
       authorize! action_name, @order
     end
 

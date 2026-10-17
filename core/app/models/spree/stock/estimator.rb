@@ -18,7 +18,7 @@ module Spree
         raise OrderRequired if package.shipment.order.nil?
 
         rates = calculate_shipping_rates(package)
-        rates.select! { |rate| rate.shipping_method.available_to_users? } if frontend_only
+        rates = Spree::Config.shipping_rate_filter_class.new(rates, frontend_only:).filter
         choose_default_shipping_rate(rates)
         Spree::Config.shipping_rate_sorter_class.new(rates).sort
       end
@@ -60,11 +60,11 @@ module Spree
           .includes(:calculator)
           .to_a
           .select do |ship_method|
-          calculator = ship_method.calculator
-          calculator.available?(package) &&
-            (calculator.preferences[:currency].blank? ||
-             calculator.preferences[:currency] == package.shipment.order.currency)
-        end
+            calculator = ship_method.calculator
+            calculator.available?(package) &&
+              (calculator.preferences[:currency].blank? ||
+               calculator.preferences[:currency] == package.shipment.order.currency)
+          end
       end
     end
   end

@@ -62,11 +62,8 @@ module Spree
       potential_shipments.detect do |shipment|
         shipment.include?(variant)
       end || begin
-        stock_items = variant.stock_items.sort_by(&:id) # cache stock items to avoid N+1
-
         potential_shipments.detect do |shipment|
-          stock_item = stock_items.detect { |stock_item| stock_item.stock_location == shipment.stock_location }
-          stock_item.backorderable? || stock_item.count_on_hand >= quantity if stock_item
+          Spree::Config.stock.quantifier_class.new(variant, shipment.stock_location).can_supply?(quantity)
         end
       end || potential_shipments.detect do |shipment|
         variant.stock_location_ids.include?(shipment.stock_location_id)
@@ -78,10 +75,10 @@ module Spree
       if variant.should_track_inventory?
         on_hand, back_order = shipment.stock_location.fill_status(variant, quantity)
 
-        on_hand.times { pending_units << shipment.set_up_inventory('on_hand', variant, order, line_item) }
-        back_order.times { pending_units << shipment.set_up_inventory('backordered', variant, order, line_item) }
+        on_hand.times { pending_units << shipment.set_up_inventory("on_hand", variant, order, line_item) }
+        back_order.times { pending_units << shipment.set_up_inventory("backordered", variant, order, line_item) }
       else
-        quantity.times { pending_units << shipment.set_up_inventory('on_hand', variant, order, line_item) }
+        quantity.times { pending_units << shipment.set_up_inventory("on_hand", variant, order, line_item) }
       end
 
       # adding to this shipment, and removing from stock_location
@@ -104,7 +101,7 @@ module Spree
 
       shipment_units = shipment.inventory_units_for_item(line_item, variant).reject do |variant_unit|
         # TODO: exclude all 'shipped' states
-        variant_unit.state == 'shipped'
+        variant_unit.state == "shipped"
       end.sort_by(&:state)
 
       removed_quantity = 0

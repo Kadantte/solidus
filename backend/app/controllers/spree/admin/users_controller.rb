@@ -26,7 +26,7 @@ module Spree
           set_roles
           set_stock_locations
 
-          flash[:success] = t('spree.created_successfully')
+          flash[:success] = t("spree.created_successfully")
           redirect_to edit_admin_user_url(@user)
         else
           load_roles
@@ -42,7 +42,11 @@ module Spree
           set_roles
           set_stock_locations
 
-          flash[:success] = t('spree.account_updated')
+          if @user.respond_to?(:timezone) && @user.saved_change_to_timezone? && @user == spree_current_user
+            session[:solidus_timezone] = nil
+          end
+
+          flash[:success] = t("spree.account_updated")
           redirect_to edit_admin_user_url(@user)
         else
           load_roles
@@ -56,7 +60,7 @@ module Spree
       def addresses
         if request.put?
           if @user.update(user_params)
-            flash.now[:success] = t('spree.account_updated')
+            flash.now[:success] = t("spree.account_updated")
           end
 
           render :addresses
@@ -66,7 +70,7 @@ module Spree
       def orders
         params[:q] ||= {}
         @search = Spree::Order.reverse_chronological.ransack(params[:q].merge(user_id_eq: @user.id))
-        @orders = @search.result.page(params[:page]).per(Spree::Config[:admin_products_per_page])
+        @orders = @search.result.page(params[:page]).per(Spree::Config.admin_products_per_page)
       end
 
       def items
@@ -74,11 +78,11 @@ module Spree
 
         @search = Spree::Order.includes(
           line_items: {
-            variant: [:product, { option_values: :option_type }]
+            variant: [:product, {option_values: :option_type}]
           }
-).ransack(params[:q].merge(user_id_eq: @user.id))
+        ).ransack(params[:q].merge(user_id_eq: @user.id))
 
-        @orders = @search.result.page(params[:page]).per(Spree::Config[:admin_products_per_page])
+        @orders = @search.result.page(params[:page]).per(Spree::Config.admin_products_per_page)
       end
 
       def model_class
@@ -93,7 +97,7 @@ module Spree
         @search = super.ransack(params[:q])
         @collection = @search.result.includes(:spree_roles)
         @collection = @collection.includes(:orders)
-        @collection = @collection.page(params[:page]).per(Spree::Config[:admin_products_per_page])
+        @collection = @collection.page(params[:page]).per(Spree::Config.admin_products_per_page)
       end
 
       def user_params
@@ -104,7 +108,7 @@ module Spree
         end
 
         if can? :manage, Spree::StockLocation
-          attributes += [{ stock_location_ids: [] }]
+          attributes += [{stock_location_ids: []}]
         end
 
         unless can? :update_password, @user

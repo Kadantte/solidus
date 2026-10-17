@@ -12,7 +12,7 @@ module Spree
           display_name += %{ (#{variant.options_text})} unless variant.options_text.blank?
 
           line_item.errors.add(:quantity, I18n.t(
-            'spree.selected_quantity_not_available',
+            "spree.selected_quantity_not_available",
             item: display_name.inspect
           ))
           false
@@ -23,11 +23,11 @@ module Spree
 
       def is_valid?(line_item)
         if line_item.inventory_units.empty?
-          Stock::Quantifier.new(line_item.variant).can_supply?(line_item.quantity)
+          Spree::Config.stock.quantifier_class.new(line_item.variant).can_supply?(line_item.quantity)
         else
           quantity_by_stock_location_id = line_item.inventory_units.pending.joins(:shipment).group(:stock_location_id).count
           quantity_by_stock_location_id.all? do |stock_location_id, quantity|
-            Stock::Quantifier.new(line_item.variant, stock_location_id).can_supply?(quantity)
+            Spree::Config.stock.quantifier_class.new(line_item.variant, stock_location_id).can_supply?(quantity)
           end
         end
       end

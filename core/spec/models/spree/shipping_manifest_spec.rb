@@ -1,67 +1,67 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 module Spree
   RSpec.describe ShippingManifest, type: :model do
     let!(:store) { create :store }
     let(:order) { Order.create! }
     let(:variant) { create :variant }
-    let!(:shipment) { create(:shipment, state: 'pending', order:) }
+    let!(:shipment) { create(:shipment, state: "pending", order:) }
     subject(:manifest) { described_class.new(inventory_units:) }
 
     def build_unit(variant, attrs = {})
-      attrs = { variant:, shipment: }.merge(attrs)
+      attrs = {variant:, shipment:}.merge(attrs)
       attrs[:line_item] = order.contents.add(variant)
       InventoryUnit.new(attrs)
     end
 
     describe "#items" do
-      context 'empty' do
+      context "empty" do
         let(:inventory_units) { [] }
         it "has correct item" do
           expect(manifest.items.count).to eq 0
         end
       end
 
-      context 'single unit' do
+      context "single unit" do
         let(:inventory_units) { [build_unit(variant)] }
         it "has correct item" do
           expect(manifest.items.count).to eq 1
           expect(manifest.items[0]).to have_attributes(
             variant:,
             quantity: 1,
-            states: { "on_hand" => 1 }
+            states: {"on_hand" => 1}
           )
         end
       end
 
-      context 'two units of same variant' do
+      context "two units of same variant" do
         let(:inventory_units) { [build_unit(variant), build_unit(variant)] }
         it "has correct item" do
           expect(manifest.items.count).to eq 1
           expect(manifest.items[0]).to have_attributes(
             variant:,
             quantity: 2,
-            states: { "on_hand" => 2 }
+            states: {"on_hand" => 2}
           )
         end
       end
 
-      context 'two units of different variants' do
-        let(:variant2){ create :variant }
+      context "two units of different variants" do
+        let(:variant2) { create :variant }
         let(:inventory_units) { [build_unit(variant), build_unit(variant2)] }
         it "has correct item" do
           expect(manifest.items.count).to eq 2
           expect(manifest.items[0]).to have_attributes(
             variant:,
             quantity: 1,
-            states: { "on_hand" => 1 }
+            states: {"on_hand" => 1}
           )
           expect(manifest.items[1]).to have_attributes(
             variant: variant2,
             quantity: 1,
-            states: { "on_hand" => 1 }
+            states: {"on_hand" => 1}
           )
         end
       end
@@ -69,7 +69,7 @@ module Spree
 
     describe "#for_order" do
       let!(:order2) { create(:order_with_line_items) }
-      context 'single unit' do
+      context "single unit" do
         let(:inventory_units) { [inventory_unit] }
         let(:inventory_unit) { build_unit(variant) }
 
@@ -86,7 +86,7 @@ module Spree
         end
       end
 
-      context 'one units in each order' do
+      context "one units in each order" do
         let(:order_2) { build_stubbed(:order) }
         let(:inventory_units) { [inventory_unit_one, inventory_unit_two] }
         let(:inventory_unit_one) { build_unit(variant) }
@@ -104,6 +104,34 @@ module Spree
         it "has single ManifestItem in second order" do
           expect(manifest.for_order(order_2).items.count).to eq 1
         end
+      end
+    end
+
+    context "when an order with loaded line items is given" do
+      let(:order) { create(:order_with_line_items) }
+      it "reuses the order's line item instances" do
+        manifest = described_class.new(inventory_units: shipment.inventory_units, order: order)
+        expect(manifest.items.map { |item| item.line_item.object_id })
+          .to match_array(order.line_items.map(&:object_id))
+      end
+
+      it "reflects unsaved changes made to the order's line items" do
+        order.line_items.first.adjustment_total = 5
+        manifest = described_class.new(inventory_units: shipment.inventory_units, order: order)
+        expect(manifest.items.first.line_item.adjustment_total).to eq(5)
+      end
+
+      it "does not mark the inventory units as changed" do
+        manifest = described_class.new(inventory_units: shipment.inventory_units, order: order)
+        expect { manifest.items }.not_to change { shipment.inventory_units.map(&:changed?) }
+      end
+    end
+
+    context "when the order's line items are not loaded" do
+      it "does not load them" do
+        order.association(:line_items).reset
+        described_class.new(inventory_units: shipment.inventory_units, order: order).items
+        expect(order.association(:line_items)).not_to be_loaded
       end
     end
   end

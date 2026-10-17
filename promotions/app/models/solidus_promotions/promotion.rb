@@ -12,17 +12,17 @@ module SolidusPromotions
       optional: true,
       inverse_of: :promotions
     belongs_to :original_promotion, class_name: "Spree::Promotion", optional: true
-    has_many :benefits, class_name: "SolidusPromotions::Benefit", dependent: :destroy
+    has_many :benefits, class_name: "SolidusPromotions::Benefit", dependent: :destroy, inverse_of: :promotion
     has_many :conditions, through: :benefits
     has_many :codes, class_name: "SolidusPromotions::PromotionCode", dependent: :destroy, inverse_of: :promotion
     has_many :code_batches, class_name: "SolidusPromotions::PromotionCodeBatch", dependent: :destroy
     has_many :order_promotions, class_name: "SolidusPromotions::OrderPromotion", dependent: :destroy
 
     validates :name, :customer_label, presence: true
-    validates :path, uniqueness: { allow_blank: true, case_sensitive: true }
-    validates :usage_limit, numericality: { greater_than: 0, allow_nil: true }
-    validates :per_code_usage_limit, numericality: { greater_than_or_equal_to: 0, allow_nil: true }
-    validates :description, length: { maximum: 255 }
+    validates :path, uniqueness: {allow_blank: true, case_sensitive: true}
+    validates :usage_limit, numericality: {greater_than: 0, allow_nil: true}
+    validates :per_code_usage_limit, numericality: {greater_than_or_equal_to: 0, allow_nil: true}
+    validates :description, length: {maximum: 255}
     validate :apply_automatically_disallowed_with_paths
     validate :apply_automatically_disallowed_with_promotion_codes
 
@@ -46,7 +46,9 @@ module SolidusPromotions
 
     def self.with_coupon_code(val)
       joins(:codes).where(
-        SolidusPromotions::PromotionCode.arel_table[:value].eq(val.downcase)
+        SolidusPromotions::PromotionCode.arel_table[:value].eq(
+          SolidusPromotions.config.coupon_code_normalizer_class.call(val)
+        )
       ).first
     end
 
@@ -55,13 +57,13 @@ module SolidusPromotions
     end
 
     def self.lane_options
-      ordered_lanes.map do |lane_name, _index|
-        [human_enum_name(:lane, lane_name), lane_name]
+      ordered_lanes.map do |lane|
+        [human_enum_name(:lane, lane), lane]
       end
     end
 
     def self.ordered_lanes
-      lanes.sort_by(&:last).to_h
+      lanes.keys.sort_by { |lane| lanes[lane] }
     end
 
     def self.order_activatable?(order)
@@ -96,7 +98,7 @@ module SolidusPromotions
       discounted_orders
         .complete
         .where.not(id: [excluded_orders.map(&:id)])
-        .where.not(spree_orders: { state: :canceled })
+        .where.not(spree_orders: {state: :canceled})
         .count
     end
 
@@ -105,7 +107,7 @@ module SolidusPromotions
         .complete
         .where.not(id: excluded_orders.map(&:id))
         .where(user: user)
-        .where.not(spree_orders: { state: :canceled })
+        .where.not(spree_orders: {state: :canceled})
         .exists?
     end
 
@@ -150,6 +152,7 @@ module SolidusPromotions
     def eligibility_results
       @eligibility_results ||= SolidusPromotions::EligibilityResults.new(self)
     end
+    deprecate eligibility_results: "Please use the `SolidusPromotions::PromotionEligibilityChecker` service object instead", deprecator: Spree.deprecator
 
     private
 
@@ -171,6 +174,7 @@ module SolidusPromotions
 
     def delete_cart_connections
       order_promotions.where(order: Spree::Order.incomplete).destroy_all
+      benefits.each(&:remove_adjustments_from_incomplete_orders)
     end
   end
 end

@@ -19,14 +19,15 @@
 #
 require "spree/core/search/base"
 require "spree/core/search/variant"
-require 'spree/preferences/configuration'
-require 'spree/core/environment'
+require "spree/preferences/configuration"
+require "spree/core/environment"
 
-require 'uri'
+require "uri"
 
 module Spree
   class AppConfiguration < Preferences::Configuration
     include Spree::Core::EnvironmentExtension
+
     # Preferences (alphabetized to more easily lookup particular preferences)
 
     # @!attribute [rw] address_requires_phone
@@ -39,7 +40,7 @@ module Spree
 
     # @!attribute [rw] admin_interface_logo
     #   @return [String] URL of logo used in admin (default: +'logo/solidus.svg'+)
-    preference :admin_interface_logo, :string, default: 'logo/solidus.svg'
+    preference :admin_interface_logo, :string, default: "logo/solidus.svg"
 
     # @!attribute [rw] admin_products_per_page
     #   @return [Integer] Number of products to display in admin (default: +10+)
@@ -69,11 +70,25 @@ module Spree
 
     # @!attribute [rw] allow_return_item_amount_editing
     #   @return [Boolean] Determines whether an admin is allowed to change a return item's pre-calculated amount (default: +false+)
+    #   @deprecated Unused since a6755a7f0f; remove it from your initializer.
     preference :allow_return_item_amount_editing, :boolean, default: false
+    msg = "`Spree::Config.allow_return_item_amount_editing` has had no effect since commit a6755a7f0f; remove it from your initializer."
+    deprecate(
+      allow_return_item_amount_editing: msg,
+      "allow_return_item_amount_editing=": msg,
+      deprecator: Spree.deprecator
+    )
 
     # @!attribute [rw] alternative_billing_phone
     #   @return [Boolean] Request an extra phone number for bill address (default: +false+)
+    #   @deprecated Unused since c40d4cbeef; remove it from your initializer.
     preference :alternative_billing_phone, :boolean, default: false
+    msg = "`Spree::Config.alternative_billing_phone` has had no effect since commit c40d4cbeef; remove it from your initializer."
+    deprecate(
+      alternative_billing_phone: msg,
+      "alternative_billing_phone=": msg,
+      deprecator: Spree.deprecator
+    )
 
     # @!attribute [rw] alternative_shipping_phone
     #   @return [Boolean] Request an extra phone number for shipping address (default: +false+)
@@ -93,7 +108,14 @@ module Spree
 
     # @!attribute [rw] auto_capture_exchanges
     #   @return [Boolean] Automatically capture the credit card (as opposed to just authorize and capture later) (default: +false+)
+    #   @deprecated Unused since ca63667027; remove it from your initializer.
     preference :auto_capture_exchanges, :boolean, default: false
+    msg = "`Spree::Config.auto_capture_exchanges` has had no effect since commit ca63667027; remove it from your initializer."
+    deprecate(
+      auto_capture_exchanges: msg,
+      "auto_capture_exchanges=": msg,
+      deprecator: Spree.deprecator
+    )
 
     # @!attribute [rw] automatic_default_address
     #   The default value of true preserves existing backwards compatible feature of
@@ -141,12 +163,19 @@ module Spree
 
     # @!attribute [rw] customer_returns_per_page
     #   @return [Integer] Customer returns to show per-page in the admin (default: +15+)
+    #   @deprecated Unused since 834a24a695; remove it from your initializer.
     preference :customer_returns_per_page, :integer, default: 15
+    msg = "`Spree::Config.customer_returns_per_page` has had no effect since commit 834a24a695; remove it from your initializer."
+    deprecate(
+      customer_returns_per_page: msg,
+      "customer_returns_per_page=": msg,
+      deprecator: Spree.deprecator
+    )
 
     # @!attribute [rw] default_country_iso
     #   Default customer country ISO code
     #   @return [String] Two-letter ISO code of a {Spree::Country} to assumed as the country of an unidentified customer (default: "US")
-    preference :default_country_iso, :string, default: 'US'
+    preference :default_country_iso, :string, default: "US"
 
     # @!attribute [rw] default_email_regexp
     #   @return [Regexp] Regex to be used in email validations, for example in Spree::EmailValidator
@@ -166,7 +195,7 @@ module Spree
 
     # @!attribute [rw] layout
     #   @return [String] template to use for layout on the frontend (default: +"spree/layouts/spree_application"+)
-    preference :layout, :string, default: 'spree/layouts/spree_application'
+    preference :layout, :string, default: "spree/layouts/spree_application"
 
     # !@attribute [rw] line_item_comparison_hooks
     #   @return [Array<Symbol>] An array of methods to call on {Spree::Order} to determine if a line item is equal to another
@@ -177,7 +206,7 @@ module Spree
 
     # @!attribute [rw] logo
     #   @return [String] URL of logo used on frontend (default: +'logo/solidus.svg'+)
-    preference :logo, :string, default: 'logo/solidus.svg'
+    preference :logo, :string, default: "logo/solidus.svg"
 
     # @!attribute [rw] log_entry_permitted_classes
     #   @return [Array<String>] An array of extra classes that are allowed to be
@@ -206,7 +235,14 @@ module Spree
 
     # @!attribute [rw] order_capturing_time_window
     #   @return [Integer] the number of days to look back for fully-shipped/cancelled orders in order to charge for them
+    #   @deprecated Unused since 9c5107fcae; remove it from your initializer.
     preference :order_capturing_time_window, :integer, default: 14
+    msg = "`Spree::Config.order_capturing_time_window` has had no effect since commit 9c5107fcae; remove it from your initializer."
+    deprecate(
+      order_capturing_time_window: msg,
+      "order_capturing_time_window=": msg,
+      deprecator: Spree.deprecator
+    )
 
     # @!attribute [rw] order_mutex_max_age
     #   @return [Integer] Max age of {Spree::OrderMutex} in seconds (default: 2 minutes)
@@ -245,9 +281,21 @@ module Spree
     #   @return [Integer] Products to show per-page in the frontend (default: +12+)
     preference :products_per_page, :integer, default: 12
 
+    # @!attribute [rw] recalculate_cart_prices
+    #   @return [Boolean] Whether to recalculate cart prices when recalculating (default: +false+)
+    versioned_preference :recalculate_cart_prices, :boolean, initial_value: false, boundaries: {"5.0.0.alpha" => true}
+
+    # @!attribute [rw] refundable_payment_states
+    #   @return [Array<String>] Payment states in which refunds may be created (default: +["completed", "pending"]+)
+    preference :refundable_payment_states, :array, default: %w[completed pending]
+
     # @!attribute [rw] require_master_price
     #   @return [Boolean] Require a price on the master variant of a product (default: +true+)
     preference :require_master_price, :boolean, default: true
+
+    # @!attribute [rw] require_refundable_payment_state
+    #   @return [Boolean] Whether creating a refund for a payment outside Spree::Config.refundable_payment_states is a validation error rather than a deprecation warning (default: +false+)
+    versioned_preference :require_refundable_payment_state, :boolean, initial_value: false, boundaries: {"5.0.0.alpha" => true}
 
     # @!attribute [rw] require_payment_to_ship
     #   @return [Boolean] Allows shipments to be ready to ship regardless of the order being paid if false (default: +true+)
@@ -261,7 +309,7 @@ module Spree
     #   @return [Array] An array of roles where generating an api key for a user
     #   at role_user creation is desired when user has one of these roles.
     #   (default: +['admin']+)
-    preference :roles_for_auto_api_key, :array, default: ['admin']
+    preference :roles_for_auto_api_key, :array, default: ["admin"]
 
     # @!attribute [rw] countries_that_use_nested_subregions
     #   @return [Array] An array of countries that use nested subregions, instead
@@ -269,7 +317,7 @@ module Spree
     #   to ensure the correct states are generated, and when running the states
     #   regenerate rake task.
     #   (default: +['IT']+)
-    preference :countries_that_use_nested_subregions, :array, default: ['IT']
+    preference :countries_that_use_nested_subregions, :array, default: ["IT"]
 
     # @!attribute [rw] send_core_emails
     #   @return [Boolean] Whether to send transactional emails (default: true)
@@ -318,14 +366,14 @@ module Spree
     end
 
     # searcher_class allows spree extension writers to provide their own Search class
-    class_name_attribute :searcher_class, default: 'Spree::Core::Search::Base'
+    class_name_attribute :searcher_class, default: "Spree::Core::Search::Base"
 
     # Allows implementing custom pricing for variants
     # @!attribute [rw] variant_price_selector_class
     # @see Spree::Variant::PriceSelector
     # @return [Class] an object that conforms to the API of
     #   the standard variant price selector class Spree::Variant::PriceSelector.
-    class_name_attribute :variant_price_selector_class, default: 'Spree::Variant::PriceSelector'
+    class_name_attribute :variant_price_selector_class, default: "Spree::Variant::PriceSelector"
 
     # Shortcut for getting the variant price selector's pricing options class
     #
@@ -339,7 +387,7 @@ module Spree
       pricing_options_class.new
     end
 
-    class_name_attribute :variant_search_class, default: 'Spree::Core::Search::Variant'
+    class_name_attribute :variant_search_class, default: "Spree::Core::Search::Variant"
 
     # Allows implementing custom vat prices generation
     # @!attribute [rw] variant_vat_prices_generator_class
@@ -347,20 +395,30 @@ module Spree
     # @return [Class] an object that conforms to the API of
     #   the standard variant vat prices generator class
     #   Spree::Variant::VatPriceGenerator.
-    class_name_attribute :variant_vat_prices_generator_class, default: 'Spree::Variant::VatPriceGenerator'
+    class_name_attribute :variant_vat_prices_generator_class, default: "Spree::Variant::VatPriceGenerator"
 
-    class_name_attribute :allocator_class, default: 'Spree::Stock::Allocator::OnHandFirst'
+    # @!attribute [rw] allocator_class
+    #   @deprecated Never read; use Spree::Config.stock.allocator_class instead.
+    class_name_attribute :allocator_class, default: "Spree::Stock::Allocator::OnHandFirst"
+    msg = "`Spree::Config.allocator_class` has never been read; the stock allocator is configured with `Spree::Config.stock.allocator_class`."
+    deprecate(
+      allocator_class: msg,
+      "allocator_class=": msg,
+      deprecator: Spree.deprecator
+    )
 
-    class_name_attribute :shipping_rate_sorter_class, default: 'Spree::Stock::ShippingRateSorter'
+    class_name_attribute :shipping_rate_sorter_class, default: "Spree::Stock::ShippingRateSorter"
 
-    class_name_attribute :shipping_rate_selector_class, default: 'Spree::Stock::ShippingRateSelector'
+    class_name_attribute :shipping_rate_selector_class, default: "Spree::Stock::ShippingRateSelector"
+
+    class_name_attribute :shipping_rate_filter_class, default: "Spree::Stock::ShippingRateFilter"
 
     # Allows providing your own class for calculating taxes on a shipping rate.
     #
     # @!attribute [rw] shipping_rate_tax_calculator_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::TaxCalculator::ShippingRate
-    class_name_attribute :shipping_rate_tax_calculator_class, default: 'Spree::TaxCalculator::ShippingRate'
+    class_name_attribute :shipping_rate_tax_calculator_class, default: "Spree::TaxCalculator::ShippingRate"
 
     # Allows providing your own Mailer for order mailer.
     #
@@ -369,14 +427,14 @@ module Spree
     #   "cancel_email" and "inventory_cancellation_email"
     #   (e.g. an ActionMailer with a "confirm_email" method) with the same
     #   signature as Spree::OrderMailer.confirm_email.
-    class_name_attribute :order_mailer_class, default: 'Spree::OrderMailer'
+    class_name_attribute :order_mailer_class, default: "Spree::OrderMailer"
 
     # Allows providing your own order update attributes class for checkout.
     #
     # @!attribute [rw] order_update_attributes_class
     # @return [Class] a class that responds to "call"
     #   with the same signature as Spree::OrderUpdateAttributes.
-    class_name_attribute :order_update_attributes_class, default: 'Spree::OrderUpdateAttributes'
+    class_name_attribute :order_update_attributes_class, default: "Spree::OrderUpdateAttributes"
 
     # Allows providing a different order recalculator.
     # @!attribute [rw] order_recalculator_class
@@ -384,7 +442,7 @@ module Spree
     # @return [Class] an object that conforms to the API of
     #   the standard order recalculator class
     #   Spree::OrderUpdater.
-    class_name_attribute :order_recalculator_class, default: 'Spree::OrderUpdater'
+    class_name_attribute :order_recalculator_class, default: "Spree::OrderUpdater"
 
     # Allows providing your own Mailer for reimbursement mailer.
     #
@@ -392,7 +450,7 @@ module Spree
     # @return [ActionMailer::Base] an object that responds to "reimbursement_email"
     #   (e.g. an ActionMailer with a "reimbursement_email" method) with the same
     #   signature as Spree::ReimbursementMailer.reimbursement_email.
-    class_name_attribute :reimbursement_mailer_class, default: 'Spree::ReimbursementMailer'
+    class_name_attribute :reimbursement_mailer_class, default: "Spree::ReimbursementMailer"
 
     # Allows providing your own Mailer for shipped cartons.
     #
@@ -400,14 +458,21 @@ module Spree
     # @return [ActionMailer::Base] an object that responds to "shipped_email"
     #   (e.g. an ActionMailer with a "shipped_email" method) with the same
     #   signature as Spree::CartonMailer.shipped_email.
-    class_name_attribute :carton_shipped_email_class, default: 'Spree::CartonMailer'
+    class_name_attribute :carton_shipped_email_class, default: "Spree::CartonMailer"
 
     # Allows providing your own class for merging two orders.
     #
     # @!attribute [rw] order_merger_class
     # @return [Class] a class with the same public interfaces
     #   as Spree::OrderMerger.
-    class_name_attribute :order_merger_class, default: 'Spree::OrderMerger'
+    class_name_attribute :order_merger_class, default: "Spree::OrderMerger"
+
+    # Allows providing your own class for selecting which orders to merge.
+    #
+    # @!attribute [rw] mergeable_orders_finder_class
+    # @return [Class] a class with the same public interfaces as
+    #   Spree::MergeableOrdersFinder.
+    class_name_attribute :mergeable_orders_finder_class, default: "Spree::MergeableOrdersFinder"
 
     # Allows providing your own class for adding default payments to a user's
     # order from their "wallet".
@@ -415,21 +480,21 @@ module Spree
     # @!attribute [rw] default_payment_builder_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::Wallet::DefaultPaymentBuilder.
-    class_name_attribute :default_payment_builder_class, default: 'Spree::Wallet::DefaultPaymentBuilder'
+    class_name_attribute :default_payment_builder_class, default: "Spree::Wallet::DefaultPaymentBuilder"
 
     # Allows providing your own class for managing the contents of an order.
     #
     # @!attribute [rw] order_contents_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::OrderContents.
-    class_name_attribute :order_contents_class, default: 'Spree::SimpleOrderContents'
+    class_name_attribute :order_contents_class, default: "Spree::SimpleOrderContents"
 
     # Allows providing your own class for shipping an order.
     #
     # @!attribute [rw] order_shipping_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::OrderShipping.
-    class_name_attribute :order_shipping_class, default: 'Spree::OrderShipping'
+    class_name_attribute :order_shipping_class, default: "Spree::OrderShipping"
 
     # Allows providing your own class for managing the inventory units of a
     # completed order.
@@ -437,7 +502,7 @@ module Spree
     # @!attribute [rw] order_cancellations_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::OrderCancellations.
-    class_name_attribute :order_cancellations_class, default: 'Spree::OrderCancellations'
+    class_name_attribute :order_cancellations_class, default: "Spree::OrderCancellations"
 
     # Allows providing your own class for canceling payments.
     #
@@ -456,14 +521,14 @@ module Spree
     # @!attribute [rw] add_payment_sources_to_wallet_class
     # @return [Class] a class with the same public interfaces
     #   as Spree::Wallet::AddPaymentSourcesToWallet.
-    class_name_attribute :add_payment_sources_to_wallet_class, default: 'Spree::Wallet::AddPaymentSourcesToWallet'
+    class_name_attribute :add_payment_sources_to_wallet_class, default: "Spree::Wallet::AddPaymentSourcesToWallet"
 
     # Allows providing your own class for recalculating totals on an item.
     #
     # @!attribute [rw] item_total_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::ItemTotal
-    class_name_attribute :item_total_class, default: 'Spree::ItemTotal'
+    class_name_attribute :item_total_class, default: "Spree::ItemTotal"
 
     # Allows providing your own class for calculating taxes on an order.
     #
@@ -472,42 +537,42 @@ module Spree
     # @!attribute [rw] tax_adjuster_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::Tax::OrderAdjuster
-    class_name_attribute :tax_adjuster_class, default: 'Spree::Tax::OrderAdjuster'
+    class_name_attribute :tax_adjuster_class, default: "Spree::Tax::OrderAdjuster"
 
     # Allows providing your own class for calculating taxes on an order.
     #
     # @!attribute [rw] tax_calculator_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::TaxCalculator::Default
-    class_name_attribute :tax_calculator_class, default: 'Spree::TaxCalculator::Default'
+    class_name_attribute :tax_calculator_class, default: "Spree::TaxCalculator::Default"
 
     # Allows providing your own class for choosing which store to use.
     #
     # @!attribute [rw] current_store_selector_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::CurrentStoreSelector
-    class_name_attribute :current_store_selector_class, default: 'Spree::StoreSelector::ByServerName'
+    class_name_attribute :current_store_selector_class, default: "Spree::StoreSelector::ByServerName"
 
     # Allows providing your own class for creating urls on taxons
     #
     # @!attribute [rw] taxon_url_parametizer_class
     # @return [Class] a class that provides a `#parameterize` method that
     # returns a String
-    class_name_attribute :taxon_url_parametizer_class, default: 'ActiveSupport::Inflector'
+    class_name_attribute :taxon_url_parametizer_class, default: "ActiveSupport::Inflector"
 
     # Allows providing your own class for image galleries on Variants
     #
     # @!attribute [rw] variant_gallery_class
     # @return [Class] a class that implements an `images` method and returns an
     # Enumerable of images adhering to the present_image_class interface
-    class_name_attribute :variant_gallery_class, default: 'Spree::Gallery::VariantGallery'
+    class_name_attribute :variant_gallery_class, default: "Spree::Gallery::VariantGallery"
 
     # Allows providing your own class for image galleries on Products
     #
     # @!attribute [rw] product_gallery_class
     # @return [Class] a class that implements an `images` method and returns an
     # Enumerable of images adhering to the present_image_class interface
-    class_name_attribute :product_gallery_class, default: 'Spree::Gallery::ProductGallery'
+    class_name_attribute :product_gallery_class, default: "Spree::Gallery::ProductGallery"
 
     # Allows switching attachment library for Image
     #
@@ -525,7 +590,7 @@ module Spree
     # `%w(image/jpeg image/jpg image/png image/gif).freeze` is the default.
     #
     # @return [Array]
-    class_name_attribute :allowed_image_mime_types, default: %w(image/jpeg image/jpg image/png image/gif).freeze
+    class_name_attribute :allowed_image_mime_types, default: %w[image/jpeg image/jpg image/png image/gif].freeze
 
     # @!attribute [rw] product_image_style_default
     #
@@ -544,10 +609,17 @@ module Spree
     #    large: '1200x1200>' } is the default.
     #
     # @return [Hash]
-    class_name_attribute :product_image_styles, default: { mini: '48x48>',
-                                                          small: '400x400>',
-                                                          product: '680x680>',
-                                                          large: '1200x1200>' }
+    class_name_attribute :product_image_styles, default: {mini: "48x48>",
+                                                          small: "400x400>",
+                                                          product: "680x680>",
+                                                          large: "1200x1200>"}
+
+    # Allows to provide your own class for tracking state changes of stateful models
+    #
+    # @!attribute [rw] state_change_tracking_class
+    # @return [Class] a class with the same public interfaces as
+    #   Spree::StateChangeTracker.
+    class_name_attribute :state_change_tracking_class, default: "Spree::StateChangeTracker"
 
     # Allows providing your own class for prioritizing store credit application
     # to an order.
@@ -555,14 +627,14 @@ module Spree
     # @!attribute [rw] store_credit_prioritizer_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::StoreCreditPrioritizer.
-    class_name_attribute :store_credit_prioritizer_class, default: 'Spree::StoreCreditPrioritizer'
+    class_name_attribute :store_credit_prioritizer_class, default: "Spree::StoreCreditPrioritizer"
 
     # Allows finding brand for product.
     #
     # @!attribute [rw] brand_selector_class
     # @return [Class] a class with the same public interfaces as
     #   Spree::TaxonBrandSelector.
-    class_name_attribute :brand_selector_class, default: 'Spree::TaxonBrandSelector'
+    class_name_attribute :brand_selector_class, default: "Spree::TaxonBrandSelector"
 
     # @!attribute [rw] taxon_image_style_default
     #
@@ -581,7 +653,7 @@ module Spree
     #    large: '1200x1200>' } is the default.
     #
     # @return [Hash]
-    class_name_attribute :taxon_image_styles, default: { mini: '32x32>', normal: '128x128>' }
+    class_name_attribute :taxon_image_styles, default: {mini: "32x32>", normal: "128x128>"}
 
     # Allows switching attachment library for Taxon
     #
@@ -611,7 +683,7 @@ module Spree
     # @return [Pathname] the configured path. (default: `Rails.root.join('db', 'migrate')`)
     attr_writer :migration_path
     def migration_path
-      @migration_path ||= ::Rails.root.join('db', 'migrate')
+      @migration_path ||= ::Rails.root.join("db", "migrate")
     end
 
     # Allows providing your own class instance for generating order numbers.
@@ -687,14 +759,14 @@ module Spree
 
     def roles
       @roles ||= Spree::RoleConfiguration.new.tap do |roles|
-        roles.assign_permissions :default, ['Spree::PermissionSets::DefaultCustomer']
-        roles.assign_permissions :admin, ['Spree::PermissionSets::SuperUser']
+        roles.assign_permissions :default, ["Spree::PermissionSets::DefaultCustomer"]
+        roles.assign_permissions :admin, ["Spree::PermissionSets::SuperUser"]
       end
     end
 
     def user_last_url_storer_rules
       @user_last_url_storer_rules ||= ::Spree::Core::ClassConstantizer::Set.new.tap do |set|
-        set << 'Spree::UserLastUrlStorer::Rules::AuthenticationRule'
+        set << "Spree::UserLastUrlStorer::Rules::AuthenticationRule"
       end
     end
 

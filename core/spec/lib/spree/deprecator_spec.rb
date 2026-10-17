@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
-require 'rails_helper'
+require "rails_helper"
 
 RSpec.describe "Spree.deprecator" do
-  Dummy = Class.new do
-    def deprecated_method
-      "foo"
-    end
-    deprecate :deprecated_method, deprecator: Spree.deprecator
+  before do
+    stub_const("Dummy", Class.new do
+      def deprecated_method
+        "foo"
+      end
+      deprecate :deprecated_method, deprecator: Spree.deprecator
+    end)
   end
 
   context "by default" do
@@ -22,7 +24,9 @@ RSpec.describe "Spree.deprecator" do
       if ENV["SOLIDUS_RAISE_DEPRECATIONS"]
         expect { Dummy.new.deprecated_method }.to raise_error(ActiveSupport::DeprecationException)
       else
-        expect { Dummy.new.deprecated_method }.not_to raise_error
+        expect { Dummy.new.deprecated_method }.to output(/DEPRECATION WARNING: deprecated_method/).to_stderr,
+          "If this test fails, it means an real error was raised or the " \
+          "STDERR output we're asserting on is stale."
       end
     end
   end

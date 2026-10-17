@@ -6,9 +6,9 @@ RSpec.describe SolidusPromotions::Conditions::Product, type: :model do
   let(:condition_options) { {} }
   let(:condition) { described_class.new(condition_options) }
 
-  it { is_expected.to have_many(:products) }
+  it_behaves_like "a product condition"
 
-  describe "#level" do
+  describe "#level", :silence_deprecations do
     it "is order" do
       expect(condition.level).to eq(:order)
     end
@@ -26,8 +26,8 @@ RSpec.describe SolidusPromotions::Conditions::Product, type: :model do
 
       it { is_expected.to be true }
 
-      context "with line item applicable set to false" do
-        let(:condition_options) { { preferred_line_item_applicable: false } }
+      context "with line item applicable set to false", :silence_deprecations do
+        let(:condition_options) { {preferred_line_item_applicable: false} }
 
         it { is_expected.to be false }
       end
@@ -211,24 +211,30 @@ RSpec.describe SolidusPromotions::Conditions::Product, type: :model do
     end
   end
 
-  describe "#product_ids_string" do
-    it "returns a string of product ids" do
-      condition.products = [create(:product), create(:product)]
-      expect(condition.product_ids_string).to eq("#{condition.products[0].id},#{condition.products[1].id}")
+  describe "#eligible?(price)" do
+    subject { condition.eligible?(price) }
+
+    let(:condition_price) { build(:price, variant:) }
+    let(:variant) { build(:variant, product: condition_product) }
+    let(:other_price) { build(:price) }
+
+    let(:condition_options) { super().merge(products: [condition_product]) }
+    let(:condition_product) { build(:product) }
+
+    it "is eligible if there are no products" do
+      expect(condition).to be_eligible(condition_price)
     end
-  end
 
-  describe "#preload_relations" do
-    subject { condition.preload_relations }
-    it { is_expected.to eq([:products]) }
-  end
+    context "for product in condition" do
+      let(:price) { condition_price }
 
-  describe "#product_ids_string=" do
-    it "sets products based on a string of product ids" do
-      product_one = create(:product)
-      product_two = create(:product)
-      condition.product_ids_string = "#{product_one.id},#{product_two.id}"
-      expect(condition.products).to eq([product_one, product_two])
+      it { is_expected.to be_truthy }
+    end
+
+    context "for product not in condition" do
+      let(:price) { other_price }
+
+      it { is_expected.to be_falsey }
     end
   end
 end

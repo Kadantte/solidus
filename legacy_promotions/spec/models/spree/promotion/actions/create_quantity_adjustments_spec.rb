@@ -15,12 +15,54 @@ module Spree::Promotion::Actions
 
     let(:line_items_attributes) do
       [
-        { price: 10, quantity: }
+        {price: 10, quantity:}
       ]
     end
 
     let(:quantity) { 1 }
     let(:promotion) { FactoryBot.create :promotion }
+
+    describe "#perform" do
+      subject { action.perform({order:, promotion:}) }
+
+      let(:calculator) { FactoryBot.create :flat_rate_calculator, preferred_amount: }
+
+      context "when calculator computes 0" do
+        let(:preferred_amount) { 0 }
+
+        it "does not create an adjustment" do
+          expect { subject }
+            .not_to change { action.adjustments.count }
+        end
+      end
+
+      context "when calculator returns a non-zero value" do
+        let(:preferred_amount) { 10 }
+        let(:line_item) { order.line_items.first }
+
+        it "creates an adjustment" do
+          expect { subject }
+            .to change { action.adjustments.count }
+            .from(0).to(1)
+            .and change { line_item.adjustments.count }
+            .from(0).to(1)
+
+          expect(line_item.adjustments).to eq(action.adjustments)
+        end
+
+        it "associates the line item with the action", :aggregate_failures do
+          expect { subject }
+            .to change { line_item.line_item_actions.count }
+            .from(0).to(1)
+
+          expect(action.line_item_actions.first).to have_attributes(
+            line_item_id: line_item.id,
+            action_id: action.id,
+            quantity: 1
+          )
+        end
+      end
+    end
 
     describe "#compute_amount" do
       subject { action.compute_amount(line_item) }
@@ -46,6 +88,15 @@ module Spree::Promotion::Actions
           context "and an item with a quantity of 2" do
             let(:quantity) { 2 }
             it { is_expected.to eq(-10) }
+
+            it "doesn't save anything to the database" do
+              action
+              line_item
+
+              expect {
+                subject
+              }.not_to make_database_queries(manipulative: true)
+            end
           end
 
           context "and an item with a quantity of 3" do
@@ -65,13 +116,13 @@ module Spree::Promotion::Actions
           context "and 2x item A, 1x item B and 1x item C" do
             let(:line_items_attributes) do
               [
-                { price: 10, quantity: 2 },
-                { price: 10, quantity: 1 },
-                { price: 10, quantity: 1 },
+                {price: 10, quantity: 2},
+                {price: 10, quantity: 1},
+                {price: 10, quantity: 1}
               ]
             end
 
-            before { action.perform({ order:, promotion: }) }
+            before { action.perform({order:, promotion:}) }
 
             describe "the adjustment for the first item" do
               let(:line_item) { order.line_items.first }
@@ -93,8 +144,8 @@ module Spree::Promotion::Actions
             create(
               :order_with_line_items,
               line_items_attributes: [
-                { quantity: 3 }
-            ]
+                {quantity: 3}
+              ]
             )
           end
 
@@ -102,7 +153,7 @@ module Spree::Promotion::Actions
 
           before do
             action.preferred_group_size = 2
-            action.perform({ order: other_order, promotion: })
+            action.perform({order: other_order, promotion:})
           end
 
           it { is_expected.to eq(-10) }
@@ -114,8 +165,8 @@ module Spree::Promotion::Actions
 
         let(:line_items_attributes) do
           [
-            { price: 10, quantity: 1 }.merge(line_one_options),
-            { price: 10, quantity: 1 }.merge(line_two_options),
+            {price: 10, quantity: 1}.merge(line_one_options),
+            {price: 10, quantity: 1}.merge(line_two_options)
           ]
         end
 
@@ -125,11 +176,11 @@ module Spree::Promotion::Actions
         context "with a quantity group of 3" do
           before do
             action.preferred_group_size = 3
-            action.perform({ order:, promotion: })
+            action.perform({order:, promotion:})
           end
 
           context "and 2x item A and 1x item B" do
-            let(:line_one_options) { { quantity: 2 } }
+            let(:line_one_options) { {quantity: 2} }
 
             describe "the adjustment for the first item" do
               let(:line_item) { order.line_items.first }
@@ -142,8 +193,8 @@ module Spree::Promotion::Actions
           end
 
           context "and the items cost different amounts" do
-            let(:line_one_options) { { quantity: 3 } }
-            let(:line_two_options) { { price: 20 } }
+            let(:line_one_options) { {quantity: 3} }
+            let(:line_two_options) { {price: 20} }
 
             describe "the adjustment for the first item" do
               let(:line_item) { order.line_items.first }
@@ -170,8 +221,8 @@ module Spree::Promotion::Actions
         end
         let(:line_items_attributes) do
           [
-            { price: 10, quantity: 1 }.merge(line_one_options),
-            { price: 10, quantity: 1 }.merge(line_two_options),
+            {price: 10, quantity: 1}.merge(line_one_options),
+            {price: 10, quantity: 1}.merge(line_two_options)
           ]
         end
 
@@ -181,11 +232,11 @@ module Spree::Promotion::Actions
         context "with a quantity group of 3" do
           before do
             action.preferred_group_size = 3
-            action.perform({ order:, promotion: })
+            action.perform({order:, promotion:})
           end
 
           context "and 2x item A and 1x item B" do
-            let(:line_one_options) { { quantity: 2 } }
+            let(:line_one_options) { {quantity: 2} }
 
             context "when amount falls within the first tier" do
               describe "the adjustment for the first item" do
@@ -199,7 +250,7 @@ module Spree::Promotion::Actions
             end
 
             context "when amount falls within the second tier" do
-              let(:line_two_options) { { price: 20 } }
+              let(:line_two_options) { {price: 20} }
 
               describe "the adjustment for the first item" do
                 let(:line_item) { order.line_items.first }

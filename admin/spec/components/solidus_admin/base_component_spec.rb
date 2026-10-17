@@ -13,7 +13,7 @@ RSpec.describe SolidusAdmin::BaseComponent, type: :component do
 
       render_inline(component)
 
-      svg = page.find("svg use")["xlink:href"]
+      svg = page.find("svg use")["href"]
       expect(svg).to match(/#ri-user-line/)
     end
   end
@@ -56,7 +56,7 @@ RSpec.describe SolidusAdmin::BaseComponent, type: :component do
       translation = component.translate("foo.bar.baz")
 
       expect(translation).to eq("translation missing: en.foo.bar.baz")
-      expect(debug_logs).to include(%{  [Foo::Component] Missing translation: en.foo.bar.baz})
+      expect(debug_logs).to include(%(  [Foo::Component] Missing translation: en.foo.bar.baz))
     end
   end
 end

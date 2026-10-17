@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
-require_dependency 'spree/calculator'
-
 module Spree
   class Calculator::TieredPercent < Calculator
     preference :base_percent, :decimal, default: 0
     preference :tiers, :hash, default: {}
-    preference :currency, :string, default: -> { Spree::Config[:currency] }
+    preference :currency, :string, default: -> { Spree::Config.currency }
 
     before_validation do
       # Convert tier values to decimals. Strings don't do us much good.
@@ -46,10 +44,10 @@ module Spree
 
     def preferred_tiers_content
       if preferred_tiers.is_a? Hash
-        unless preferred_tiers.keys.all?{ |key| key.is_a?(Numeric) && key > 0 }
+        unless preferred_tiers.keys.all? { |key| key.is_a?(Numeric) && key > 0 }
           errors.add(:base, :keys_should_be_positive_number)
         end
-        unless preferred_tiers.values.all?{ |key| key.is_a?(Numeric) && key >= 0 && key <= 100 }
+        unless preferred_tiers.values.all? { |key| key.is_a?(Numeric) && key >= 0 && key <= 100 }
           errors.add(:base, :values_should_be_percent)
         end
       else

@@ -8,22 +8,25 @@ module SolidusAdmin
     search_scope(:deleted) { _1.with_discarded.discarded }
     search_scope(:discontinued) { _1.where(discontinue_on: ...Time.current) }
     search_scope(:available) { _1.available }
-    search_scope(:in_stock) { _1.where(id: Spree::Variant.in_stock.distinct.select(:product_id)) }
-    search_scope(:out_of_stock) { _1.where.not(id: Spree::Variant.in_stock.distinct.select(:product_id)) }
+    search_scope(:in_stock) { _1.where(id: Spree::Variant.in_stock.select(:product_id)) }
+    search_scope(:out_of_stock) { _1.where.not(id: Spree::Variant.in_stock.select(:product_id)) }
 
     def index
       products = apply_search_to(
-        Spree::Product.includes(:master, :variants),
+        Spree::Product.includes(
+          :variant_images,
+          master: :prices,
+          variants: :prices,
+          variants_including_master: {stock_items: :stock_location}
+        ),
         param: :q,
+        distinct: false
       )
 
-      set_page_and_extract_portion_from(
-        products,
-        ordered_by: { updated_at: :desc, id: :desc },
-      )
+      @page = paginate(products, ordered_by: {name: :asc})
 
       respond_to do |format|
-        format.html { render component('products/index').new(page: @page) }
+        format.html { render component("products/index").new(page: @page) }
       end
     end
 
@@ -35,7 +38,7 @@ module SolidusAdmin
       @product = Spree::Product.with_discarded.friendly.find(params[:id])
 
       respond_to do |format|
-        format.html { render component('products/show').new(product: @product) }
+        format.html { render component("products/show").new(product: @product) }
       end
     end
 
@@ -43,17 +46,13 @@ module SolidusAdmin
       @product = Spree::Product.friendly.find(params[:id])
 
       if @product.update(product_params)
-        flash[:notice] = t('spree.successfully_updated', resource: [
-          Spree::Product.model_name.human,
-          @product.name.inspect,
-        ].join(' '))
-
+        flash[:success] = t(".success")
         redirect_to action: :show, status: :see_other
       else
         flash.now[:error] = @product.errors.full_messages.join(", ")
 
         respond_to do |format|
-          format.html { render component('products/show').new(product: @product), status: :unprocessable_entity }
+          format.html { render component("products/show").new(product: @product), status: :unprocessable_entity }
         end
       end
     end
@@ -65,7 +64,7 @@ module SolidusAdmin
         @products.discard_all
       end
 
-      flash[:notice] = t('.success')
+      flash[:notice] = t(".success")
       redirect_to products_path, status: :see_other
     end
 
@@ -77,7 +76,7 @@ module SolidusAdmin
           .update_all(discontinue_on: Time.current)
       end
 
-      flash[:notice] = t('.success')
+      flash[:notice] = t(".success")
       redirect_to products_path, status: :see_other
     end
 
@@ -95,7 +94,7 @@ module SolidusAdmin
           .update_all(discontinue_on: nil)
       end
 
-      flash[:notice] = t('.success')
+      flash[:notice] = t(".success")
       redirect_to products_path, status: :see_other
     end
 

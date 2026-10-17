@@ -19,7 +19,7 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
     end
 
     def singular_name
-      self[:class].model_name.human if self[:class]
+      self[:class]&.model_name&.human
     end
 
     def plural_name
@@ -60,12 +60,14 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
     end
   end
 
-  def initialize(id:, data:, search: nil, sortable: nil)
+  # @option options [Boolean] :embedded if true, does not add border around table
+  def initialize(id:, data:, search: nil, sortable: nil, **options)
     @id = id
     @data = Data.new(**data)
     @data.columns.unshift selectable_column if @data.batch_actions.present? && @data.rows.present?
     @search = Search.new(**search) if search
     @sortable = Sortable.new(**sortable) if sortable
+    @options = options
   end
 
   def selectable_column
@@ -75,7 +77,7 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
           form: batch_actions_form_id,
           "data-action": "#{stimulus_id}#selectAllRows",
           "data-#{stimulus_id}-target": "headerCheckbox",
-          "aria-label": t('.select_all'),
+          "aria-label": t(".select_all")
         )
       },
       data: ->(data) {
@@ -85,10 +87,10 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
           value: data.id,
           "data-action": "#{stimulus_id}#selectRow",
           "data-#{stimulus_id}-target": "checkbox",
-          "aria-label": t('.select_row'),
+          "aria-label": t(".select_row")
         )
       },
-      col: { class: 'w-[52px]' },
+      col: {class: "w-[52px]"}
     )
   end
 
@@ -105,7 +107,7 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
       name: request_forgery_protection_token,
       value: form_authenticity_token(form_options: {
         action: batch_action.action,
-        method: batch_action.method,
+        method: batch_action.method
       }),
       formaction: batch_action.action,
       formmethod: batch_action.method,
@@ -113,17 +115,19 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
       type: :submit,
       icon: batch_action.icon,
       text: batch_action.label,
-      scheme: :secondary,
+      scheme: :secondary
     }
 
     if batch_action.require_confirmation
-      params["data-action"] = "click->#{stimulus_id}#confirmAction"
-      params["data-#{stimulus_id}-message-param"] = t(
+      params["data-turbo-confirm"] = t(".are_you_sure")
+      params["data-confirmation-template"] = t(
         ".action_confirmation",
         action: batch_action.label.downcase
       )
-      params["data-#{stimulus_id}-resource-singular-param"] = @data.singular_name.downcase
-      params["data-#{stimulus_id}-resource-plural-param"] = @data.plural_name.downcase
+      params["data-confirm-button"] = batch_action.label
+      params["data-resource-singular"] = @data.singular_name.downcase
+      params["data-resource-plural"] = @data.plural_name.downcase
+      params.merge! stimulus_target("batchActionButton")
     end
 
     render component("ui/button").new(**params)
@@ -138,7 +142,7 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
       predicate: filter.predicate,
       options: filter.options,
       form: search_form_id,
-      index:,
+      index:
     )
   end
 
@@ -147,7 +151,7 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
     cell = @data[:class].human_attribute_name(cell) if cell.is_a?(Symbol)
     cell = cell.render_in(self) if cell.respond_to?(:render_in)
 
-    content_tag(:th, cell, class: %{
+    content_tag(:th, cell, class: %(
       border-b
       border-gray-100
       px-4
@@ -155,7 +159,7 @@ class SolidusAdmin::UI::Table::Component < SolidusAdmin::BaseComponent
       font-semibold
       vertical-align-middle
       leading-none
-    }, **attrs)
+    ), **attrs)
   end
 
   def render_data_cell(column, data)

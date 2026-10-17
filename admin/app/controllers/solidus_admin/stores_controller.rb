@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module SolidusAdmin
-  class StoresController < SolidusAdmin::BaseController
+  class StoresController < SolidusAdmin::ResourcesController
     include SolidusAdmin::ControllerHelpers::Search
 
     def index
@@ -10,26 +10,60 @@ module SolidusAdmin
         param: :q
       )
 
-      set_page_and_extract_portion_from(stores)
+      @page = paginate(stores)
 
       respond_to do |format|
-        format.html { render component('stores/index').new(page: @page) }
+        format.html { render component("stores/index").new(page: @page) }
       end
     end
 
     def destroy
-      @stores = Spree::Store.where(id: params[:id])
+      @resource = resource_class.where(id: params[:id])
 
-      Spree::Store.transaction { @stores.destroy_all }
+      failed = @resource.destroy_all.reject(&:destroyed?)
+      if failed.none?
+        flash[:notice] = t(".success")
+      else
+        failure_summary = failed.map { |record|
+          t ".error.description",
+            name: record.name,
+            reason: record.errors.full_messages.join(", ")
+        }.join("<br/>")
 
-      flash[:notice] = t('.success')
-      redirect_back_or_to stores_path, status: :see_other
+        flash[:alert] = {
+          danger: {title: t(".error.title"), message: failure_summary}
+        }
+      end
+
+      redirect_to after_destroy_path, status: :see_other
     end
 
     private
 
-    def store_params
-      params.require(:store).permit(:store_id, permitted_store_attributes)
+    def resource_class = Spree::Store
+
+    def resources_collection = Spree::Store
+
+    def permitted_resource_params
+      permitted = [
+        :name,
+        :url,
+        :code,
+        :meta_description,
+        :meta_keywords,
+        :seo_title,
+        :mail_from_address,
+        :default_currency,
+        :cart_tax_country_iso,
+        {available_locales: []}
+      ]
+      # This check can be removed once we drop support for Solidus 4.7 and earlier.
+      permitted << {address_attributes: Spree::PermittedAttributes.address_attributes} if Spree::Store.reflect_on_association(:address)
+
+      params.require(:store).permit(*permitted).tap do |store_params|
+        without_address_parameter = store_params[:address_attributes]&.except(:country_id, :state_id, :reverse_charge_status)&.compact_blank&.empty?
+        store_params.delete(:address_attributes) if without_address_parameter
+      end
     end
   end
 end
